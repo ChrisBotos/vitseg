@@ -21,7 +21,7 @@ sc.pp.normalize_total(iri1_spt)
 sc.pp.log1p(iri1_spt)
 iri1_spt
 
-stseq_ann = pd.read_csv(f"{nieromics_dir}/spatial_multiomics_data_MS/transcriptomics/metadata_complete.csv",index_col=0)
+stseq_ann = pd.read_csv("metadata_complete.csv", index_col=0)
 stseq_ann = stseq_ann[stseq_ann['condition']=='IRI']
 stseq_ann['banksy'] = stseq_ann['banksy'].astype('Int64')
 stseq_ann.columns = ['x','y','condition','sample','SS_SD','SS_CT']
@@ -48,7 +48,7 @@ iri1_spt.obs['SS_SD_Group'] = iri1_spt.obs['SS_SD'].apply(map_ss_sd_group)
 iri1_spt = iri1_spt[iri1_spt.obs['SS_SD_Group'].notna()]
 
 # read the new CT annotations (from 3rd of July)
-barcode_ann = pd.read_csv(f"{lts}/barcode_annotation.csv",index_col=0)
+barcode_ann = pd.read_csv("barcode_annotation.csv", index_col=0)
 barcode_ann['_group'] = barcode_ann.index.str[-1]
 
 # Create two separate DataFrames based on the grouping
