@@ -1,1 +1,10 @@
 .idea
+
+/venv310
+
+/ViT
+
+/valid_data
+
+/img/*
+!/img/.gitkeep
