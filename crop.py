@@ -66,8 +66,8 @@ def main():
     logger.info(f"Reading image: {input_path}")
     image = tifffile.imread(input_path)
 
-    # define a crop box: relative coords y from 0.66–0.68, x from 0.5–0.52
-    crop_bbox = (0.66, 0.68, 0.5, 0.52)
+    # define a crop box: relative coordinates xmin,xmax,ymin,ymax.
+    crop_bbox = (0.5,0.52,0.66,0.68)
 
     logger.info("Performing crop")
     cropped = crop_image(image, crop_bbox, logger=logger)
