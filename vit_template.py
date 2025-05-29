@@ -140,5 +140,5 @@ def ext_features_coord(model, tissue, imgformat):
     print(f"Coordinates extracted and saved to: ViT/ViT_coord_{tissue}.csv")
 
 # Run on your IRI slice only
-# Ensure your file is named IRI_regist.tif under img/
-ext_features_coord(vits16, 'IRI_regist', 'tif')
+# Ensure your file is named IRI_regist_cropped.tif under img/
+ext_features_coord(vits16, 'IRI_regist_cropped', 'tif')
