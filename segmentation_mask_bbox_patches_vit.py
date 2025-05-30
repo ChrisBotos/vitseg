@@ -4,7 +4,8 @@ python segmentation_mask_bbox_patches_vit.py \
   -m segmentation_masks.npy \
   -o ./ViT_cell_patches \
   --margin_factor 1.2 \
-  --batch_size 64
+  --batch_size 64 \
+  --mask_overlay
 
 -i, --image <path>
 Path to your input image file (e.g. img/IRI_regist_cropped.tif). This is the RGB image on which your segmentation masks were generated. The script will open it, draw bounding boxes, and crop patches from it.
@@ -128,13 +129,15 @@ def overlay_masks(image: Image.Image, masks: np.ndarray, output_path: Path):
     if masks.ndim == 2:
         masks = masks[np.newaxis, ...]
     for mask in masks:
-        # generate random color
-        color = tuple(int(255*c) for c in rng.random(3)) + (100,)
-        mask_img = Image.new('RGBA', base.size, color=(0,0,0,0))
-        mask_pixels = mask.astype(bool)
-        # draw mask region
+        # generate a random RGB color
+        r, g, b = rng.integers(0, 256, size=3)
+        color = (int(r), int(g), int(b), 100)
+        # create a solid color image
         mask_layer = Image.new('RGBA', base.size, color)
-        overlay.paste(mask_layer, (0,0), Image.fromarray(mask_pixels.astype('uint8')*255))
+        # create a mask image for alpha composite
+        mask_img = Image.fromarray((mask.astype('uint8') * 255))
+        # composite mask_layer over overlay using mask_img as alpha
+        overlay = Image.composite(mask_layer, overlay, mask_img)
     result = Image.alpha_composite(base, overlay)
     result.convert('RGB').save(output_path)
     print(f"Saved mask overlay image to {output_path}")
