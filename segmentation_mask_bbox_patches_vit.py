@@ -42,11 +42,11 @@ import os
 import argparse
 from pathlib import Path
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageColor
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from transformers import ViTFeatureExtractor, ViTModel
+from transformers import ViTImageProcessor, ViTModel
 import pandas as pd
 from tqdm import tqdm
 
@@ -81,19 +81,63 @@ class MaskPatchDataset(Dataset):
 
 def compute_bounding_boxes(masks: np.ndarray):
     """
-    Given a boolean array of shape (N, H, W), compute tight bounding boxes for each mask.
+    Given a mask array, compute tight bounding boxes for each individual cell mask.
+    Supports:
+      - 2D label maps (H, W) where each integer >0 is a cell ID.
+      - 3D boolean masks (N, H, W).
     Returns list of tuples (x0, y0, x1, y1).
     """
     bboxes = []
-    for mask in masks:
-        # Find indices where mask is True.
-        ys, xs = np.where(mask)
-        if len(xs) == 0 or len(ys) == 0:
-            continue  # skip empty masks.
-        x0, x1 = int(xs.min()), int(xs.max())
-        y0, y1 = int(ys.min()), int(ys.max())
-        bboxes.append((x0, y0, x1, y1))
+    # Case 1: 2D labeled mask map
+    if masks.ndim == 2 and np.issubdtype(masks.dtype, np.integer):
+        labels = np.unique(masks)
+        labels = labels[labels > 0]  # ignore background 0
+        print(f"Detected {len(labels)} unique labels in mask map.")
+        for lab in labels:
+            mask_bool = masks == lab
+            ys, xs = np.where(mask_bool)
+            if xs.size == 0:
+                continue
+            x0, x1 = xs.min(), xs.max()
+            y0, y1 = ys.min(), ys.max()
+            bboxes.append((int(x0), int(y0), int(x1), int(y1)))
+    else:
+        # Ensure 3D mask array: (N, H, W)
+        if masks.ndim == 2:
+            masks = masks[np.newaxis, ...]
+        print(f"Loaded {masks.shape[0]} mask planes from .npy file.")
+        for mask in masks:
+            mask_bool = mask.astype(bool)
+            ys, xs = np.where(mask_bool)
+            if xs.size == 0:
+                continue
+            x0, x1 = xs.min(), xs.max()
+            y0, y1 = ys.min(), ys.max()
+            bboxes.append((int(x0), int(y0), int(x1), int(y1)))
+    print(f"Computed {len(bboxes)} bounding boxes from masks.")
     return bboxes
+
+
+def overlay_masks(image: Image.Image, masks: np.ndarray, output_path: Path):
+    """
+    Overlay segmentation masks in random semi-transparent colors on the input image and save.
+    """
+    base = image.convert('RGBA')
+    overlay = Image.new('RGBA', base.size)
+    rng = np.random.default_rng()
+    if masks.ndim == 2:
+        masks = masks[np.newaxis, ...]
+    for mask in masks:
+        # generate random color
+        color = tuple(int(255*c) for c in rng.random(3)) + (100,)
+        mask_img = Image.new('RGBA', base.size, color=(0,0,0,0))
+        mask_pixels = mask.astype(bool)
+        # draw mask region
+        mask_layer = Image.new('RGBA', base.size, color)
+        overlay.paste(mask_layer, (0,0), Image.fromarray(mask_pixels.astype('uint8')*255))
+    result = Image.alpha_composite(base, overlay)
+    result.convert('RGB').save(output_path)
+    print(f"Saved mask overlay image to {output_path}")
 
 
 def extract_and_save_patches(
@@ -102,121 +146,94 @@ def extract_and_save_patches(
     output_dir: Path,
     margin_factor: float,
     batch_size: int,
-    device: torch.device
+    device: torch.device,
+    mask_overlay: bool
 ):
     """
-    Load image and segmentation masks, draw boxes, extract padded patches, run DINO ViT and save results.
+    Load image and segmentation masks, optionally overlay masks, draw boxes, extract padded patches,
+    run DINO ViT and save results.
     """
-    # Load original image.
     img = Image.open(image_path).convert('RGB')
-    width, height = img.size
-
-    # Load masks from .npy file expecting shape (N, H, W).
     masks = np.load(masks_path)
 
-    # Compute bounding boxes for each mask.
+    # Optional mask overlay
+    if mask_overlay:
+        overlay_file = output_dir / f"{image_path.stem}_mask_overlay.png"
+        overlay_masks(img, masks, overlay_file)
+
+    # Compute bounding boxes and debug print counts
     bboxes = compute_bounding_boxes(masks)
 
-    # Prepare to draw bounding boxes in red.
+    # Draw bounding boxes on image
     img_boxes = img.copy()
     draw = ImageDraw.Draw(img_boxes)
-
     patches, centers = [], []
-    for (x0, y0, x1, y1) in bboxes:
-        # determine box dimensions and center.
+    for x0, y0, x1, y1 in bboxes:
         w, h = x1 - x0 + 1, y1 - y0 + 1
         cx, cy = x0 + w/2, y0 + h/2
-        # compute padded square side length.
-        side = int(min(max(margin_factor * max(w, h), 1), max(width, height)))
-        # calculate top-left of the square patch.
-        left = int(max(cx - side/2, 0))
-        top = int(max(cy - side/2, 0))
-        right = int(min(left + side, width))
-        bottom = int(min(top + side, height))
-        # draw rectangle.
+        side = int(max(1, margin_factor * max(w, h)))
+        left = max(int(cx - side/2), 0)
+        top = max(int(cy - side/2), 0)
+        right = min(left + side, img.width)
+        bottom = min(top + side, img.height)
         draw.rectangle([left, top, right, bottom], outline='red', width=2)
-        # crop patch and record.
-        patch = img.crop((left, top, right, bottom))
-        patches.append(patch)
+        patches.append(img.crop((left, top, right, bottom)))
         centers.append((int(cx), int(cy)))
-
-    # Ensure output directory exists.
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save image with drawn boxes.
     boxes_file = output_dir / f"{image_path.stem}_bboxes.png"
     img_boxes.save(boxes_file)
     print(f"Saved bounding-box image to {boxes_file}")
 
-    # Prepare DINO ViT.
-    extractor = ViTFeatureExtractor.from_pretrained('facebook/dino-vits16')
+    # Initialize processor and model only once
+    processor = ViTImageProcessor.from_pretrained('facebook/dino-vits16')
     model = ViTModel.from_pretrained('facebook/dino-vits16')
     model.to(device).eval()
 
-    # Define preprocessing transform using extractor stats.
+    size = processor.size if isinstance(processor.size, (int, tuple)) else processor.size['height']
     transform = transforms.Compose([
-        transforms.Resize(extractor.size),
-        transforms.CenterCrop(extractor.size),
+        transforms.Resize(size),
+        transforms.CenterCrop(size),
         transforms.ToTensor(),
-        transforms.Normalize(extractor.image_mean, extractor.image_std)
+        transforms.Normalize(processor.image_mean, processor.image_std)
     ])
 
-    # Build dataset and loader.
     dataset = MaskPatchDataset(patches, centers, transform=transform)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-    feats, coords = [], []
-    # Process patches through DINO ViT.
-    for batch in tqdm(loader, desc="Extracting DINO features"):
-        imgs, xs, ys = batch
+    feats_list, coords = [], []
+    for imgs, xs, ys in tqdm(loader, desc="Extracting DINO features"):
         imgs = imgs.to(device)
         with torch.no_grad():
             outputs = model(pixel_values=imgs)
-            # take class token features.
-            out_feats = outputs.last_hidden_state[:, 0, :].cpu()
-        feats.append(out_feats)
-        coords.extend(zip(xs.numpy().tolist(), ys.numpy().tolist()))
+            feats_list.append(outputs.last_hidden_state[:, 0, :].cpu())
+        coords.extend(zip(xs.tolist(), ys.tolist()))
 
-    # Concatenate and save.
-    feats_all = torch.cat(feats, dim=0).numpy()
-    df_feats = pd.DataFrame(feats_all)
-    df_coords = pd.DataFrame(coords, columns=['x_center', 'y_center'])
-    feats_file = output_dir / f"features_{image_path.stem}.csv"
-    coords_file = output_dir / f"coords_{image_path.stem}.csv"
-    df_feats.to_csv(feats_file, index=False)
-    df_coords.to_csv(coords_file, index=False)
-    print(f"Saved features to {feats_file}")
-    print(f"Saved coordinates to {coords_file}")
+    feats_all = torch.cat(feats_list, dim=0).numpy()
+    pd.DataFrame(feats_all).to_csv(output_dir / f"features_{image_path.stem}.csv", index=False)
+    pd.DataFrame(coords, columns=['x_center', 'y_center']).to_csv(
+        output_dir / f"coords_{image_path.stem}.csv", index=False)
+    print(f"Saved features and coordinates to {output_dir}")
 
 
 def main():
-    """
-    Parse arguments and invoke the patch extraction + feature pipeline.
-    """
     parser = argparse.ArgumentParser(
         description="Extract DINO-ViT features from cell-based bounding-box patches."
     )
-    parser.add_argument(
-        "-i", "--image", required=True, type=Path,
-        help="Path to the input image file."
-    )
-    parser.add_argument(
-        "-m", "--masks", required=True, type=Path,
-        help="Path to the .npy file containing segmentation masks."
-    )
-    parser.add_argument(
-        "-o", "--output", default=Path("./ViT_outputs"), type=Path,
-        help="Directory to save output files (CSV features, coords, bbox image)."
-    )
-    parser.add_argument(
-        "--margin_factor", default=1.2, type=float,
-        help="Factor to enlarge bounding boxes uniformly around each cell."
-    )
-    parser.add_argument(
-        "--batch_size", default=64, type=int,
-        help="Number of patches to process per batch through the model."
-    )
+    parser.add_argument("-i", "--image", required=True, type=Path,
+        help="Path to the input image file.")
+    parser.add_argument("-m", "--masks", required=True, type=Path,
+        help="Path to the .npy file containing segmentation masks.")
+    parser.add_argument("-o", "--output", default=Path("./ViT_outputs"), type=Path,
+        help="Directory to save output files.")
+    parser.add_argument("--margin_factor", default=1.2, type=float,
+        help="Factor to enlarge bounding boxes around each cell.")
+    parser.add_argument("--batch_size", default=64, type=int,
+        help="Number of patches to process per batch.")
+    parser.add_argument("--mask_overlay", action="store_true",
+        help="If set, save an overlay of segmentation masks in random colors.")
     args = parser.parse_args()
+
+    output_dir = args.output
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -224,10 +241,11 @@ def main():
     extract_and_save_patches(
         image_path=args.image,
         masks_path=args.masks,
-        output_dir=args.output,
+        output_dir=output_dir,
         margin_factor=args.margin_factor,
         batch_size=args.batch_size,
-        device=device
+        device=device,
+        mask_overlay=args.mask_overlay
     )
 
 if __name__ == "__main__":
