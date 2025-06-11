@@ -1,5 +1,5 @@
 """
-python segmentation_mask_bbox_patches_vit.py \
+python segmentation_mask_dynamic_patches_vit.py \
   -i img/IRI_regist_cropped.tif \
   -m segmentation_masks.npy \
   -o ./ViT_cell_patches \

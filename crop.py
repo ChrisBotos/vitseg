@@ -8,32 +8,32 @@ import logging
 import numpy as np
 import tifffile
 
-def crop_image(image: np.ndarray, crop_bbox, logger=None) -> np.ndarray:
+def crop_image(image: np.ndarray, crop_cell_centered_patch, logger=None) -> np.ndarray:
     """
     Crop image to a user-defined bounding box.
 
     Args:
         image (np.ndarray): Input image.
-        crop_bbox: Tuple of (y0, y1, x0, x1), either relative (0–1) or absolute.
+        crop_cell_centered_patch: Tuple of (y0, y1, x0, x1), either relative (0–1) or absolute.
         logger: Logger object.
 
     Returns:
         np.ndarray: Cropped image.
     """
     h, w = image.shape[:2]
-    y0, y1, x0, x1 = crop_bbox
+    y0, y1, x0, x1 = crop_cell_centered_patch
 
-    # interpret relative bbox
-    if all(0 <= val <= 1 for val in crop_bbox):
+    # interpret relative cell_centered_patch
+    if all(0 <= val <= 1 for val in crop_cell_centered_patch):
         y0, y1 = int(y0 * h), int(y1 * h)
         x0, x1 = int(x0 * w), int(x1 * w)
         if logger:
-            logger.info(f"Cropping with relative bbox → rows {y0}:{y1}, cols {x0}:{x1}")
+            logger.info(f"Cropping with relative cell_centered_patch → rows {y0}:{y1}, cols {x0}:{x1}")
     else:
         # absolute coords
-        y0, y1, x0, x1 = map(int, crop_bbox)
+        y0, y1, x0, x1 = map(int, crop_cell_centered_patch)
         if logger:
-            logger.info(f"Cropping with absolute bbox → rows {y0}:{y1}, cols {x0}:{x1}")
+            logger.info(f"Cropping with absolute cell_centered_patch → rows {y0}:{y1}, cols {x0}:{x1}")
 
     # clamp to image bounds
     y0, y1 = max(0, y0), min(h, y1)
@@ -67,10 +67,10 @@ def main():
     image = tifffile.imread(input_path)
 
     # define a crop box: relative coordinates xmin,xmax,ymin,ymax.
-    crop_bbox = (0.5,0.52,0.66,0.68)
+    crop_cell_centered_patch = (0.5,0.52,0.66,0.68)
 
     logger.info("Performing crop")
-    cropped = crop_image(image, crop_bbox, logger=logger)
+    cropped = crop_image(image, crop_cell_centered_patch, logger=logger)
 
     logger.info(f"Saving cropped image to: {output_path}")
     tifffile.imwrite(output_path, cropped)
