@@ -6,7 +6,7 @@ python segmentation_mask_dynamic_patches_vit.py \
   --patch_size 16 \
   --batch_size 512 \
   --crop_region 0 1 0 1 \
-  --viz_crop_region 0.2 0.2 0.3 0.3
+  --viz_crop_region 0 1 0 1
 """
 
 
