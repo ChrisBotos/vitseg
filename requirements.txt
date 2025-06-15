@@ -10,3 +10,5 @@ contourpy>=1.0.5
 pillow>=11.2.1
 torch>=2.7.1
 scikit-image>=0.19.3
+pyarrow>=20.0.0
+fastparquet>=2024.11.0
