@@ -4,14 +4,13 @@ python filter_masks.py \
   --input segmentation_masks.npy \
   --results-dir my_results \
   --output-prefix filtered_ \
-  --min-pixels 20  --max-pixels 550 \
+  --min-pixels 20  --max-pixels 570 \
   --min-circularity 0.66  --max-circularity 1.0 \
   --min-solidity 0.80      --max-solidity 1.0 \
   --min-eccentricity 0.0   --max-eccentricity 0.98 \
   --min-aspect-ratio 0.5   --max-aspect-ratio 3.2 \
   --min-hole-fraction 0.0  --max-hole-fraction 0.001 \
   --max-straight-fraction 0.25 \
-  --exclude-border \
   --summary-csv \
   --raw-image img/IRI_regist_cropped.tif \
   --overlay
