@@ -5,7 +5,7 @@ python filter_masks.py \
   --results-dir my_results \
   --output-prefix filtered_ \
   --min-pixels 20  --max-pixels 570 \
-  --min-circularity 0.66  --max-circularity 1.0 \
+  --min-circularity 0.63  --max-circularity 1.0 \
   --min-solidity 0.80      --max-solidity 1.0 \
   --min-eccentricity 0.0   --max-eccentricity 0.98 \
   --min-aspect-ratio 0.5   --max-aspect-ratio 3.2 \
