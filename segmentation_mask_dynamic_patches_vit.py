@@ -3,10 +3,11 @@
 python segmentation_mask_dynamic_patches_vit.py \
     -i img/IRI_regist_cropped.tif \
     -m filtered_results/filtered_passed_masks.npy \
-    -o ./VIT_dynamic_patches \
+    -o VIT_dynamic_patches \
     --patch_size 16 \
     --batch_size 512 \
-    --model_name facebook/dino-vits16
+    --model_name facebook/dino-vits16 \
+    --viz_crop_region 0 1 0 1
 """
 
 from __future__ import annotations
