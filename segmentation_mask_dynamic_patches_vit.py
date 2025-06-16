@@ -1,41 +1,21 @@
 #!/usr/bin/env python
 """
-segmentation_patches_vit_improved.py
-------------------------------------
-Extract fixed‑size image patches centred on nuclear centroids (as produced by a Cellpose
-segmentation mask) and embed them with a Vision Transformer (ViT). The script outputs two
-CSV files per input image:
-    1. features_<image‑stem>.csv  – ℝ^D feature vectors (one row per nucleus).
-    2. coords_<image‑stem>.csv    – the (x, y) centroid coordinates corresponding to each row.
-
-Major improvements over the original version
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-* Bug‑fix: the singleton dimension for boolean masks is now inserted correctly.
-* Safer AMP handling: automatic mixed precision is enabled only when CUDA is available.
-* Robust model loading: falls back to remote download if local weights are missing and prints
-  informative messages.
-* Optional Torch 2.0 compilation is toggled automatically and deactivates gracefully if not
-  available.
-* Clearer feature aggregation: the last four hidden layers are averaged (instead of summed),
-  then mean‑pooled over patch tokens before ℓ2‑normalisation.
-* Enhanced CLI with {
-    --model_name          : ViT checkpoint to use,
-    --workers             : DataLoader worker threads,
-    --no_compile          : Skip torch.compile if compatibility issues arise,
-    --save_numpy          : Additionally save a NumPy .npy feature array for faster reload.
-  }.
-* Comprehensive biological comments throughout the code, as requested.
-
-Author: ChatGPT‑o3 – expert bioinformatician.
-Date: 2025‑06‑16.
+python segmentation_mask_dynamic_patches_vit.py \
+    -i img/IRI_regist_cropped.tif \
+    -m filtered_results/filtered_passed_masks.npy \
+    -o ./VIT_dynamic_patches \
+    --patch_size 16 \
+    --batch_size 512 \
+    --model_name facebook/dino-vits16
 """
+
 from __future__ import annotations
 
-import argparse  # Handles command‑line interfaces.
-import logging   # Provides flexible runtime logging.
-import os        # Facilitates OS interaction.
-from pathlib import Path  # Pathlib offers readable path manipulation.
-from typing import Iterable, List, Sequence, Tuple
+import argparse
+import logging
+import os
+from pathlib import Path
+from typing import List, Sequence, Tuple
 
 import numpy as np                # Efficient numerical arrays.
 import pandas as pd               # Convenient table IO.
@@ -184,7 +164,13 @@ def extract_and_save_patches(
 
     # ---------------- Image & mask loading ---------------- #
     image = Image.open(image_path).convert("RGB")
-    masks = np.load(masks_path)
+    masks = np.load(masks_path, allow_pickle=True)  # allow_pickle lets us open object arrays
+
+    # If someone saved a list of 2-D masks, convert it into a proper 3-D stack or a single label map.
+    if masks.dtype == object:  # list-of-arrays case
+        # Each element should be a 2-D boolean (or int) array for one nucleus.
+        # Stack along a new first axis so downstream code sees shape (N, H, W).
+        masks = np.stack(masks.astype(np.bool_), axis=0)
 
     # ---------------- Optional cropping ---------------- #
     if crop_region is not None:
