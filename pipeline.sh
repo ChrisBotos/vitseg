@@ -27,15 +27,15 @@ RAW_MASKS="segmentation_masks.npy"
 PATCH_SIZES=(16 32 64)
 
 # Initial guess for the number of K-Means clusters. It can be overridden automatically.
-K_INIT=12
-AUTO_K="dbi"           # Choose “silhouette”, “dbi” or “none”.
+K_INIT=10
+AUTO_K="silhouette"           # Choose “silhouette”, “dbi” or “none”.
 
 # Patch-extraction batch size (higher is faster but needs more GPU memory).
 BATCH_SIZE=1024
 
 # Visualisation box in *fractional* image coordinates: ymin ymax xmin xmax.
 # Keep 0 1 0 1 to process the full frame or tighten it to zoom.
-VIZ_BOX=(0 0.25 0 0.25)
+VIZ_BOX=(0.5 0.51 0.66 0.67)
 
 # Filtering thresholds. Adjust to your dataset or keep the generous defaults.
 MIN_PIXELS=20       ; MAX_PIXELS=570
@@ -50,9 +50,9 @@ MAX_STRAIGHT=0.22   # Only an upper bound is useful here.
 # Derived paths – change only if needed.
 #######################################
 BASE=$(basename "${IMAGE%.*}")              # e.g. IRI_regist_cropped
-FILTER_DIR="filtered_results"               # All outputs from filter_masks.py.
-PATCH_DIR="vit_dynamic_patches"             # All patch CSVs/NPYs live here.
-CLUSTER_DIR="clustered_vit_patches"         # Final clustering artefacts.
+FILTER_DIR="test_run"               # All outputs from filter_masks.py.
+PATCH_DIR="test_run"             # All patch CSVs/NPYs live here.
+CLUSTER_DIR="test_run"         # Final clustering artefacts.
 
 ###############################################################################
 # 1. Filter segmentation masks.
