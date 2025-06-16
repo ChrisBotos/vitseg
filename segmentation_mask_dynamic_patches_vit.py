@@ -21,11 +21,17 @@ Key points
 
 
 Example:
-python new.py     -i img/IRI_regist_cropped.tif     -m filtered_results/filtered_passed_masks.npy     -o VIT_dynamic_patches     --patch_sizes 16 32 64     --batch_size 512     --model_name facebook/dino-vits16     --viz_crop_region 0 1 0 1
+python new.py \
+  -i img/IRI_regist_cropped.tif \
+  -m filtered_results/filtered_passed_masks.npy \
+  -o VIT_dynamic_patches \
+  --patch_sizes 16 32 64 \
+  --batch_size 512 \
+  --model_name facebook/dino-vits16 \
+  --viz_crop_region 0 1 0 1
 
-
-Author: Christos Botos – bioinformatician.
-Date: 2025‑06‑16.
+Author: Christos Botos – Mahfouz Lab
+Date: 15-06-2025.
 """
 from __future__ import annotations
 
@@ -37,6 +43,7 @@ from typing import Dict, List, Sequence, Tuple
 import random
 
 import numpy as np
+import contextlib
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -151,7 +158,7 @@ def extract_and_save_patches(
         vx0, vy0 = int(vxmin * cw), int(vymin * ch)
         vx1, vy1 = int(vxmax * cw), int(vymax * ch)
 
-        viz = image.crop((vx0, vx0, vx1, vy1)).copy()
+        viz = image.crop((vx0, vy0, vx1, vy1)).copy()
         draw = ImageDraw.Draw(viz)
 
         for x, y in centroids:         # loop over nuclei
@@ -169,15 +176,29 @@ def extract_and_save_patches(
         viz.save(output_dir / f"viz_{image_path.stem}.png")
 
 
-    # ---------------- TF + loader -------------------------------------- # -------------------------------------- #
     vit_size = processor.size["height"] if isinstance(processor.size, dict) else processor.size
     tfm = transforms.Compose([
         transforms.Resize(vit_size), transforms.CenterCrop(vit_size),
         transforms.ToTensor(), transforms.Normalize(mean=processor.image_mean, std=processor.image_std),
     ])
 
+    # Preallocate a mapping from patch size to extracted features.
     size_to_feats: Dict[int, np.ndarray] = {}
-    autocast = torch.cuda.amp.autocast if (use_amp and device.type=="cuda") else torch.cpu.amp.autocast  # type: ignore[attr‑defined]
+
+    # Decide which autocast context manager to use, if any.
+    if use_amp:
+        # If we’re on CUDA, do fp16 mixed precision.
+        if device.type == "cuda":
+            autocast_ctx = torch.autocast(device_type="cuda", dtype=torch.float16)
+        # If we’re on CPU, do bfloat16 mixed precision.
+        elif device.type == "cpu":
+            autocast_ctx = torch.autocast(device_type="cpu", dtype=torch.bfloat16)
+        # For any other device, fall back to no auto casting.
+        else:
+            autocast_ctx = contextlib.nullcontext()
+    else:
+        # If AMP is disabled, use a no-op context.
+        autocast_ctx = contextlib.nullcontext()
 
     for s in sizes:
         LOGGER.info("Embedding %d‑px crops …", s)
@@ -199,7 +220,7 @@ def extract_and_save_patches(
         with torch.inference_mode():
             for imgs, *_ in tqdm(loader, desc=f"{s}px", unit="batch"):
                 imgs = imgs.to(device, non_blocking=True)
-                with autocast():
+                with autocast_ctx:
                     out = model(pixel_values=imgs)
                 hid = torch.stack(out.hidden_states[-4:], 0).mean(0)
                 emb = F.normalize(hid[:,1:,:].mean(1), p=2, dim=1).cpu().float().numpy()
