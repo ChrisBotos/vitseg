@@ -2,7 +2,7 @@
 """
 python filter_masks.py \
   --input segmentation_masks.npy \
-  --results-dir my_results \
+  --results-dir filtered_results \
   --output-prefix filtered_ \
   --min-pixels 20  --max-pixels 570 \
   --min-circularity 0.63  --max-circularity 1.0 \
@@ -507,11 +507,26 @@ def main():
     df = compute_metrics(masks, intensity)
     passed = filter_masks(df, cfg.th)
 
+    # masks  : (N, H, W) or a list/obj-array of N binary masks
+    # passed : Boolean vector of length N (True = keep)
 
-    # Save masks.
-    def dump(sel, name):
-        np.save(cfg.out_dir / f"{cfg.prefix}{name}.npy", np.array([masks[i] for i in np.where(sel)[0]], dtype=object))
-    dump(passed, "passed_masks"); dump(~passed, "failed_masks")
+    def dump(mask_stack, selection, name):
+        """
+        Save the subset of nuclei masks indicated by *selection* as a clean
+        (M, H, W) boolean stack and write it to disk.
+        """
+        mask_stack = np.asarray(mask_stack, dtype=object)  # (N,) object array
+
+        # Grab the selected masks, then stack them along a new first axis.
+        kept = np.stack([m.astype(bool) for m in mask_stack[selection]], axis=0)  # (M, H, W)
+
+        out_file = cfg.out_dir / f"{cfg.prefix}{name}.npy"
+        np.save(out_file, kept)
+        print(f"Saved {kept.shape[0]} masks → {out_file}")
+
+    # Call it.
+    dump(masks, passed, "passed_masks")
+    dump(masks, ~passed, "failed_masks")
 
     # Summaries.
     if cfg.save_summary_csv:
