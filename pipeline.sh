@@ -31,7 +31,7 @@ K_INIT=10
 AUTO_K="silhouette"           # Choose “silhouette”, “dbi” or “none”.
 
 # Patch-extraction batch size (higher is faster but needs more GPU memory).
-BATCH_SIZE=1024
+BATCH_SIZE=4096
 
 # Visualisation box in *fractional* image coordinates: ymin ymax xmin xmax.
 # Keep 0 1 0 1 to process the full frame or tighten it to zoom.
