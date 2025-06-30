@@ -51,10 +51,12 @@ import warnings
 
 import numpy as np
 from numpy.lib.format import open_memmap
+import matplotlib
 import json
 import pandas as pd
 from skimage.color import gray2rgb
 from skimage.io import imsave
+from typing import Tuple
 from skimage.measure import regionprops_table
 
 logging.basicConfig(
@@ -118,6 +120,7 @@ class Config:
     th: Thresholds
     raw_image: str | None
     overlay: bool
+    region: Tuple[float, float, float, float] | None = None
 
 ###############################################################################
 # Helper functions – metrics.
@@ -279,9 +282,19 @@ def paint_overlay(
     label_map: np.ndarray,
     passed_labels: set[int],
     out_path: Path,
+    region: Tuple[float, float, float, float] | None = None,
     alpha: float = 0.35,
 ) -> None:
-    """color passed nuclei green and failed red without loading mask stack."""
+    """Colour passed nuclei green and failed red; honour an optional crop box."""
+
+    # ❶ Crop raw and label_map if a region was given.
+    if region is not None and region != (0.0, 1.0, 0.0, 1.0):
+        xmin, xmax, ymin, ymax = region
+        h, w = label_map.shape
+        l, r = int(xmin * w), int(xmax * w)
+        t, b = int(ymin * h), int(ymax * h)
+        raw       = raw[t:b, l:r]       if raw.ndim == 2 else raw[t:b, l:r, :]
+        label_map = label_map[t:b, l:r]
 
     if raw.ndim == 2:
         base = gray2rgb((raw / raw.max() * 255).astype(np.uint8))
@@ -350,6 +363,9 @@ def parse_cli() -> Config:
     a.add_argument("--raw-image", type=Path, help="Raw microscopy image for overlays (tif or npy).")
     a.add_argument("--overlay", action="store_true")
     a.add_argument("--verbose", action="store_true")
+    a.add_argument("--region", nargs=4, type=float,
+                   metavar=("XMIN", "XMAX", "YMIN", "YMAX"),
+                   help="Restrict overlay to this fractional box (0-1 coordinates).")
 
     add_threshold_args(a)
     args = a.parse_args()
@@ -370,6 +386,7 @@ def parse_cli() -> Config:
         th=th,
         raw_image=str(args.raw_image) if args.raw_image else None,
         overlay=args.overlay,
+        region=tuple(args.region) if args.region else None,
     )
 
 ###############################################################################
@@ -416,12 +433,27 @@ def main() -> None:  # noqa: C901 – Linear CLI flow.
     # 4 ▸ Overlay (optional).
     if cfg.overlay:
         assert cfg.raw_image is not None, "--raw-image required for overlay."
+
+        # Load the raw fluorescence or bright-field image.
         if str(cfg.raw_image).lower().endswith(".npy"):
             raw = np.load(cfg.raw_image, mmap_mode="r")
         else:
             from skimage.io import imread
             raw = imread(cfg.raw_image)
-        paint_overlay(raw, label_map, set(passed_labels), cfg.out_dir / f"{cfg.prefix}overlay.tif")
+
+        # Informative log.
+        LOGGER.info("Saving overlay for region: %s",
+                    cfg.region if cfg.region else "full frame")
+
+        # Draw red/green QC overlay, optionally cropped to cfg.region.
+        paint_overlay(
+            raw=raw,
+            label_map=label_map,
+            passed_labels=set(np.where(passed_mask)[0] + 1),
+            out_path=cfg.out_dir / f"{cfg.prefix}overlay.tif",
+            region=cfg.region,
+            alpha=0.35,
+        )
 
     '''Persist boolean mask stack for downstream scripts'''
 

@@ -162,26 +162,42 @@ def choose_optimal_k(features: np.ndarray, k_max: int, criterion: str) -> Tuple[
 
 def save_overlay_from_masks(
     img: Image.Image,
-    masks: np.ndarray,               # shape (N, H, W)
-    labels: np.ndarray,              # Cluster assignment per mask, shape (N,)
-    palette: dict[int, tuple[int,int,int,int]],
+    masks: np.ndarray,                      # Shape → (N, H, W) boolean.
+    labels: np.ndarray,                     # Cluster id per mask slice.
+    palette: dict[int, tuple[int, int, int, int]],
     out_path: Path,
     alpha: float = 0.35,
-):
-    rgb = np.array(img.convert("RGB"), dtype=np.uint8)
+    region: tuple[float, float, float, float] | None = None,
+) -> None:
+    """Blend coloured nuclei on top of *img*; optionally restrict to `region`."""
+
+    # ── 1 ▸ Crop to region if requested ─────────────────────────────────────────
+    if region is not None and region != (0.0, 1.0, 0.0, 1.0):
+        xmin, xmax, ymin, ymax = region
+        w, h = img.size
+        l, r = int(xmin * w), int(xmax * w)
+        t, b = int(ymin * h), int(ymax * h)
+
+        img = img.crop((l, t, r, b))                       # PIL object.
+        masks = masks[:, t:b, l:r]                         # NumPy slice.
+
+    # ── 2 ▸ Prepare RGB layers ─────────────────────────────────────────────────
+    rgb     = np.array(img.convert("RGB"), dtype=np.uint8)
     overlay = rgb.copy()
 
+    # ── 3 ▸ Blend every nucleus slice ──────────────────────────────────────────
     for idx, m in enumerate(masks):
-        cl = labels[idx]
-        R, G, B, A = palette.get(cl, (160,160,160, int(alpha*255)))
-        color = np.array([R, G, B], dtype=np.uint8)
-        α = (A / 255.0) * alpha
+        cl          = int(labels[idx])
+        R, G, B, A  = palette.get(cl, (160, 160, 160, int(alpha * 255)))
+        colour      = np.array([R, G, B], dtype=np.uint8)
+        α           = (A / 255.0) * alpha
 
-        mask_bool = m.astype(bool)
+        mask_bool   = m.astype(bool)
         overlay[mask_bool] = (
-            (1 - α) * overlay[mask_bool] + α * color
+            (1 - α) * overlay[mask_bool] + α * colour
         ).astype(np.uint8)
 
+    # ── 4 ▸ Write TIFF to disk ─────────────────────────────────────────────────
     imsave(str(out_path), overlay)
 
 
@@ -299,14 +315,19 @@ def main() -> None:  # noqa: C901 – Function intentionally lengthy for linear 
     default_grey = (160, 160, 160, 230)
 
     out_path = args.outdir / "overlay_clusters.tif"
+
+    # Overlay clusters on (optionally) cropped image.
+    logging.info("Overlay crop region: %s", args.region)
     save_overlay_from_masks(
         img=img,
-        masks=mask,  # full stack
-        labels=labels,  # one cluster ID per mask
+        masks=mask,
+        labels=labels,
         palette=raw_palette,
-        out_path=out_path,
+        out_path=args.outdir / "overlay_clusters.tif",
         alpha=0.35,
+        region=tuple(args.region),
     )
+
     logging.info("Overlay saved: %s", out_path.name)
 
     # ---------------------------------------------------------------------
