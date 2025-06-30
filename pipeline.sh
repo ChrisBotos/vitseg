@@ -28,7 +28,7 @@ PATCH_SIZES=(16 32 64)
 
 # Initial guess for the number of K-Means clusters. It can be overridden automatically.
 K_INIT=10
-AUTO_K="silhouette"           # Choose “silhouette”, “dbi” or “none”.
+AUTO_K="none"           # Choose “silhouette”, “dbi” or “none”.
 
 # Patch-extraction batch size (higher is faster but needs more GPU memory).
 BATCH_SIZE=4096
@@ -58,7 +58,7 @@ CLUSTER_DIR="test_run"         # Final clustering artefacts.
 # 1. Filter segmentation masks.
 ###############################################################################
 echo "➤ Filtering masks …"
-python filter_masks.py \
+python filter_masks_memopt.py \
     --input  "${RAW_MASKS}" \
     --results-dir "${FILTER_DIR}" \
     --output-prefix "filtered_" \
