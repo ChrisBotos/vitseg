@@ -140,11 +140,11 @@ def extract_and_save_patches(
 
     # ---------------- Optional patch visualisation ---------------- #
     if viz_crop_region is not None:
-        # deterministic but distinct colours by crop size
+        # deterministic but distinct colors by crop size
         random.seed(42)
         palette = ["red"] + [f"#{random.randint(0, 0xFFFFFF):06x}"
                              for _ in range(len(sizes) - 1)]
-        size2colour = dict(zip(sizes, palette))
+        size2color = dict(zip(sizes, palette))
 
         vxmin, vxmax, vymin, vymax = viz_crop_region
         cw, ch = image.size
@@ -157,12 +157,12 @@ def extract_and_save_patches(
         for x, y in centroids:         # loop over nuclei
             for s in sizes:            # loop over crop sizes
                 half = s // 2
-                colour = size2colour[s]
+                color = size2color[s]
                 # --- rectangle must receive a tuple of four ints ---
                 draw.rectangle(
                     (x - half - vx0, y - half - vy0,
                      x + half - vx0, y + half - vy0),
-                    outline=colour,
+                    outline=color,
                     width=2,
                 )
 

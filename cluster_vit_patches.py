@@ -163,7 +163,7 @@ def choose_optimal_k(features: np.ndarray, k_max: int, criterion: str) -> Tuple[
 def save_overlay_from_masks(
     img: Image.Image,
     masks: np.ndarray,               # shape (N, H, W)
-    labels: np.ndarray,              # cluster assignment per mask, shape (N,)
+    labels: np.ndarray,              # Cluster assignment per mask, shape (N,)
     palette: dict[int, tuple[int,int,int,int]],
     out_path: Path,
     alpha: float = 0.35,
@@ -174,12 +174,12 @@ def save_overlay_from_masks(
     for idx, m in enumerate(masks):
         cl = labels[idx]
         R, G, B, A = palette.get(cl, (160,160,160, int(alpha*255)))
-        colour = np.array([R, G, B], dtype=np.uint8)
+        color = np.array([R, G, B], dtype=np.uint8)
         α = (A / 255.0) * alpha
 
         mask_bool = m.astype(bool)
         overlay[mask_bool] = (
-            (1 - α) * overlay[mask_bool] + α * colour
+            (1 - α) * overlay[mask_bool] + α * color
         ).astype(np.uint8)
 
     imsave(str(out_path), overlay)
@@ -225,7 +225,7 @@ def compute_label_cluster_map(mask: np.ndarray, coords: pd.DataFrame) -> Dict[in
 
 
 def generate_color_palette(n: int, alpha: int = 200) -> Dict[int, Tuple[int, int, int, int]]:
-    """Generate an RGBA palette with visually distinct colours using Matplotlib cycler."""
+    """Generate an RGBA palette with visually distinct colors using Matplotlib cycler."""
     cmap = plt.get_cmap("tab20")
     palette = {}
     for i in range(n):
@@ -294,7 +294,7 @@ def main() -> None:  # noqa: C901 – Function intentionally lengthy for linear 
     else:
         raise ValueError(f"Unexpected mask ndim={mask.ndim}. Expected 2 or 3.")
 
-    # Prepare colour palette for clustering overlay: vivid & semi-opaque.
+    # Prepare color palette for clustering overlay: vivid & semi-opaque.
     raw_palette = generate_color_palette(k, alpha=230)  # RGBA tuples per cluster.
     default_grey = (160, 160, 160, 230)
 
@@ -321,9 +321,9 @@ def main() -> None:  # noqa: C901 – Function intentionally lengthy for linear 
     plt.figure(figsize=(5, 5))
     for cl in range(k):
         subset = pcs_df[pcs_df["cluster"] == cl]
-        colour = np.array(raw_palette[cl])[:3] / 255.0
+        color = np.array(raw_palette[cl])[:3] / 255.0
         plt.scatter(subset["PC1"], subset["PC2"], s=8,
-                    label=f"Cluster {cl}", color=colour)
+                    label=f"Cluster {cl}", color=color)
     plt.xlabel("PC1")
     plt.ylabel("PC2")
     plt.gca().set_aspect("equal", adjustable="box")

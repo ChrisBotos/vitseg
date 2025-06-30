@@ -99,6 +99,7 @@ class PatchDataset(Dataset):
 def extract_and_save_patches(
     image_path: Path,
     masks_path: Path,
+    label_map_path: Path | None,
     output_dir: Path,
     patch_size: int,
     patch_sizes: List[int] | None,
@@ -128,30 +129,82 @@ def extract_and_save_patches(
         model.half()
 
     image = Image.open(image_path).convert("RGB")
-    masks = np.load(masks_path, allow_pickle=True)
-    if masks.dtype == object:
-        masks = np.stack(masks.astype(bool), axis=0)
 
+    """
+    Load masks or a label list and derive nuclear centroids.
+    The function now supports three input formats:
+        • A 3-D boolean mask stack (H × W × N).
+        • An object array of 2-D masks.
+        • A 1-D integer label list with an accompanying integer label-map.
+    """
+
+    # 1. Read whatever is stored in `masks_path`.
+    masks_or_labels = np.load(masks_path, mmap_mode="r")
+
+    # 2. Prepare containers.
+    centroids: list[tuple[int, int]] = []                  # Final (x, y) pairs.
+    masks: np.ndarray | None = None                       # 3-D boolean stack.
+
+    # 3. Interpret the content and populate `centroids` and, if available, `masks`.
+    if masks_or_labels.ndim >= 3 or masks_or_labels.dtype == object:
+        # Either a 3-D boolean stack or an object array of 2-D masks.
+        masks = masks_or_labels if masks_or_labels.dtype != object else np.stack(
+            masks_or_labels.astype(bool), axis=0
+        )
+        centroids = compute_centroids(masks)
+
+    else:
+        # A 1-D list of labels – fall back to the original segmentation.
+        assert label_map_path is not None, (
+            "You passed a label list but omitted --label_map."
+        )
+        raw_seg = np.load(label_map_path, mmap_mode="r")
+        labels = masks_or_labels.astype(int)
+
+        for lab in labels:
+            # Handle both 3-D binary stacks and 2-D integer maps.
+            if raw_seg.ndim == 3 and raw_seg.dtype != np.int_:
+                ys, xs = np.nonzero(raw_seg[lab - 1])
+            else:
+                ys, xs = np.nonzero(raw_seg == lab)
+            if xs.size:
+                centroids.append((int(xs.mean()), int(ys.mean())))
+
+    """
+    Optional cropping of the image and masks.
+    If we cropped the masks we recompute centroids to stay consistent.
+    """
     if crop_region is not None:
         xmin, xmax, ymin, ymax = crop_region
         w, h = image.size
-        l, t, r, b = int(xmin*w), int(ymin*h), int(xmax*w), int(ymax*h)
-        image = image.crop((l, t, r, b))
-        masks = masks[:, t:b, l:r] if masks.ndim == 3 else masks[t:b, l:r]
+        l, t, r, b = int(xmin * w), int(ymin * h), int(xmax * w), int(ymax * h)
+        image = image.crop((l, t, r, b))                     # Crop the RGB slide.
+        if masks is not None:
+            masks = masks[:, t:b, l:r]                       # Crop the mask stack.
+            centroids = compute_centroids(masks)             # Recompute centroids.
+        else:
+            # Adjust centroids from label-list mode.
+            centroids = [(x - l, y - t)
+                         for (x, y) in centroids
+                         if l <= x < r and t <= y < b]
 
-    centroids = compute_centroids(masks)
-    if not centroids:
+    """
+    Safety check.
+    Abort early if no nuclei remain after preprocessing.
+    """
+    if len(centroids) == 0:
         LOGGER.warning("No nuclei detected – aborting.")
         return
+
     LOGGER.info("Detected %d nuclei.", len(centroids))
 
-    # ---------------- Optional patch visualisation ---------------- #
+    """Optional patch visualisation"""
     if viz_crop_region is not None:
-        # deterministic but distinct colours by crop size
+        # deterministic but distinct colors by crop size
         random.seed(42)
         palette = ["red"] + [f"#{random.randint(0, 0xFFFFFF):06x}"
                              for _ in range(len(sizes) - 1)]
-        size2colour = dict(zip(sizes, palette))
+        size2color = dict(zip(sizes, palette))
 
         vxmin, vxmax, vymin, vymax = viz_crop_region
         cw, ch = image.size
@@ -161,15 +214,15 @@ def extract_and_save_patches(
         viz = image.crop((vx0, vy0, vx1, vy1)).copy()
         draw = ImageDraw.Draw(viz)
 
-        for x, y in centroids:         # loop over nuclei
-            for s in sizes:            # loop over crop sizes
+        for x, y in centroids:         # Loop over nuclei.
+            for s in sizes:            # Loop over crop sizes.
                 half = s // 2
-                colour = size2colour[s]
-                # --- rectangle must receive a tuple of four ints ---
+                color = size2color[s]
+                # Rectangle must receive a tuple of four ints.
                 draw.rectangle(
                     (x - half - vx0, y - half - vy0,
                      x + half - vx0, y + half - vy0),
-                    outline=colour,
+                    outline=color,
                     width=2,
                 )
 
@@ -240,7 +293,7 @@ def extract_and_save_patches(
         np.save(output_dir/f"features_{image_path.stem}.npy", combined)
 
 
-# ---------------------------- CLI wrapper --------------------------------- #
+"""CLI wrapper"""
 
 
 def build_argparser():
@@ -258,6 +311,9 @@ def build_argparser():
     p.add_argument("--crop_region", nargs=4, type=float)
     p.add_argument("--viz_crop_region", nargs=4, type=float)
     p.add_argument("--save_numpy", action="store_true")
+    p.add_argument("--label_map", type=Path, help = "Path to the original label map " 
+                                                                 "(required when --mask is a label list).")
+
     return p
 
 
@@ -266,6 +322,7 @@ def main():
     extract_and_save_patches(
         image_path=a.image,
         masks_path=a.mask,
+        label_map_path=a.label_map,
         output_dir=a.output,
         patch_size=a.patch_size,
         patch_sizes=a.patch_sizes,

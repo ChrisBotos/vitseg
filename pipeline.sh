@@ -81,7 +81,8 @@ for S in "${PATCH_SIZES[@]}"; do PATCH_SIZE_ARGS+=( "$S" ); done
 
 python segmentation_mask_dynamic_patches_vit.py \
     --image "${IMAGE}" \
-    --mask  "${FILTER_DIR}/filtered_passed_masks.npy" \
+    --mask  "${FILTER_DIR}/filtered_passed_labels.npy" \
+    --label_map "${RAW_MASKS}" \
     --output "${PATCH_DIR}" \
     --patch_sizes "${PATCH_SIZE_ARGS[@]}" \
     --batch_size "${BATCH_SIZE}" \

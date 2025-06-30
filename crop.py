@@ -35,7 +35,7 @@ def crop_image(image: np.ndarray, crop_cell_centered_patch, logger=None) -> np.n
         if logger:
             logger.info(f"Cropping with absolute cell_centered_patch → rows {y0}:{y1}, cols {x0}:{x1}")
 
-    # clamp to image bounds
+    # Clamp to image bounds
     y0, y1 = max(0, y0), min(h, y1)
     x0, x1 = max(0, x0), min(w, x1)
 
@@ -58,7 +58,7 @@ def main():
     input_path  = os.path.join(img_dir, "IRI_regist.tif")
     output_path = os.path.join(img_dir, "IRI_regist_cropped.tif")
 
-    # check input
+    # Check input
     if not os.path.isfile(input_path):
         logger.error(f"Input file not found: {input_path}")
         return

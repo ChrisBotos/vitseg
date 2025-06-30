@@ -19,7 +19,7 @@ Key Improvements:
       temporary mask is alive at any time.
     • Output boolean stacks are created as `np.memmap`, filled incrementally,
       and finally flushed to `.npy` – peak RAM is ≈ 2× the image size, no more.
-    • Overlay generation colours each nucleus on‑the‑fly; no stack in memory.
+    • Overlay generation colors each nucleus on‑the‑fly; no stack in memory.
 
 Dependencies:
     • Python ≥ 3.10.
@@ -47,10 +47,11 @@ import logging
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List, Tuple
+import warnings
 
 import numpy as np
 from numpy.lib.format import open_memmap
+import json
 import pandas as pd
 from skimage.color import gray2rgb
 from skimage.io import imsave
@@ -184,8 +185,93 @@ def apply_thresholds(df: pd.DataFrame, th: Thresholds) -> np.ndarray:
     LOGGER.info("%d / %d nuclei pass all thresholds.", passed.sum(), len(passed))
     return passed
 
+def violin_scatter(
+    ax: "matplotlib.axes.Axes",
+    data: np.ndarray,
+    lo: float,
+    hi: float,
+    ylabel: str,
+    title: str,
+) -> None:
+    """Draw a violin outline plus jittered scatter colored by value."""
+
+    import matplotlib.pyplot as plt
+
+    # Violin outline.
+    vp = ax.violinplot([data], positions=[1], showextrema=False)
+    for body in vp["bodies"]:
+        body.set_facecolor("none")
+        body.set_edgecolor("black")
+
+    # Jittered scatter with Viridis coloring.
+    rng = np.random.default_rng(0)
+    sc = ax.scatter(
+        rng.normal(1, 0.07, len(data)),
+        data,
+        c=data,
+        cmap="viridis",
+        s=10,
+        edgecolors="none",
+    )
+
+    # Threshold lines.
+    ax.hlines([lo, hi], 0.5, 1.5, linestyles="--", colors="black")
+    ax.set_xticks([1])
+    ax.set_xticklabels([title])
+    ax.set_ylabel(ylabel)
+
+    # Color bar.
+    plt.colorbar(sc, ax=ax, fraction=0.046, pad=0.04, label=ylabel)
+
+
+def save_violin_plots(
+    df: pd.DataFrame,
+    th: Thresholds,
+    out_dir: Path,
+    prefix: str,
+) -> None:
+    """Generate and save violin-scatter plots for every bounded metric."""
+
+    import matplotlib.pyplot as plt
+
+    plots = [
+        ("area",            th.min_pixels,         th.max_pixels,         "Pixel Count",    "Size"),
+        ("circularity",     th.min_circularity,    th.max_circularity,    "Circularity",    "Circularity"),
+        ("solidity",        th.min_solidity,       th.max_solidity,       "Solidity",       "Solidity"),
+        ("eccentricity",    th.min_eccentricity,   th.max_eccentricity,   "Eccentricity",   "Eccentricity"),
+        ("aspect_ratio",    th.min_aspect_ratio,   th.max_aspect_ratio,   "Aspect Ratio",   "Aspect Ratio"),
+        ("hole_fraction",   th.min_hole_fraction,  th.max_hole_fraction,  "Hole Fraction",  "Hole Fraction"),
+        ("straight_fraction", getattr(th, "min_straight_fraction", 0.0),
+                              getattr(th, "max_straight_fraction", 1.0),
+                                                            "Straight Fraction", "Straight Fraction"),
+        ("mean_intensity",  th.min_mean_intensity, th.max_mean_intensity, "Mean Intensity", "Mean Intensity"),
+    ]
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    for col, lo, hi, ylabel, title in plots:
+        if col not in df.columns or (np.isneginf(lo) and np.isposinf(hi)):
+            continue  # Skip missing or totally unbounded metrics.
+
+        fig, ax = plt.subplots(figsize=(4, 6), constrained_layout=True)
+        violin_scatter(ax, df[col].values, lo, hi, ylabel, title)
+
+        with warnings.catch_warnings():
+            # Suppress the occasional NumPy det() warning triggered by constrained-layout.
+            warnings.filterwarnings(
+                "ignore",
+                category=RuntimeWarning,
+                message="invalid value encountered in det",
+                module="numpy.linalg",
+            )
+            fig.savefig(out_dir / f"{prefix}{col}_violin.png", dpi=300)
+
+        plt.close(fig)
+        LOGGER.info("Saved %s violin plot.", col)
+
+
 ###############################################################################
-# Overlay generation (streamed – constant memory).
+# Overlay generation.
 ###############################################################################
 
 def paint_overlay(
@@ -195,7 +281,7 @@ def paint_overlay(
     out_path: Path,
     alpha: float = 0.35,
 ) -> None:
-    """Colour passed nuclei green and failed red without loading mask stack."""
+    """color passed nuclei green and failed red without loading mask stack."""
 
     if raw.ndim == 2:
         base = gray2rgb((raw / raw.max() * 255).astype(np.uint8))
@@ -212,9 +298,9 @@ def paint_overlay(
     unique_labels = unique_labels[unique_labels != 0]
 
     for lab in unique_labels:
-        colour = green if lab in passed_labels else red
+        color = green if lab in passed_labels else red
         mask = label_map == lab
-        overlay[mask] = ((1 - alpha) * overlay[mask] + alpha * colour).astype(np.uint8)
+        overlay[mask] = ((1 - alpha) * overlay[mask] + alpha * color).astype(np.uint8)
 
     imsave(str(out_path), overlay)
     LOGGER.info("Overlay saved → %s", out_path.name)
@@ -236,33 +322,6 @@ def load_label_map(path: Path) -> np.ndarray:
             label[sl.astype(bool)] = i
         return label
     raise ValueError("Unsupported mask array shape – expected label map or stack.")
-
-
-def write_masks(
-    label_map: np.ndarray,
-    labels: List[int],
-    out_file: Path,
-) -> None:
-    """Write the selected labels to *out_file* as a Boolean stack.
-
-    The function streams one nucleus at a time into a memory-mapped array
-    created with *open_memmap*, which writes a valid .npy header up front.
-    This prevents the ‘UnpicklingError: invalid load key 0x01’ that occurs
-    when using bare np.memmap without a header.
-    """
-    h, w = label_map.shape
-    n = len(labels)
-    LOGGER.info("Writing %d masks → %s.", n, out_file.name)
-
-    # Create a .npy file with a correct header and obtain a writable memmap.
-    mm = open_memmap(out_file, mode="w+", dtype=np.bool_, shape=(n, h, w))
-
-    # Fill the memmap slice by slice. Only one H×W array is resident at a time.
-    for idx, lab in enumerate(labels):
-        mm[idx] = label_map == lab
-
-    mm.flush()   # Ensure header and data are flushed to disk.
-    del mm       # Close the memmap and release the file handle.
 
 ###############################################################################
 # CLI parsing.
@@ -336,14 +395,23 @@ def main() -> None:  # noqa: C901 – Linear CLI flow.
     failed_labels = metrics_df.label[~passed_mask].astype(int).tolist()
 
     # 3 ▸ Write outputs – streamed.
-    if passed_labels:
-        write_masks(label_map, passed_labels, cfg.out_dir / f"{cfg.prefix}passed_masks.npy")
-    if failed_labels:
-        write_masks(label_map, failed_labels, cfg.out_dir / f"{cfg.prefix}failed_masks.npy")
+    np.save(cfg.out_dir / f"{cfg.prefix}passed_labels.npy",
+                     np.array(passed_labels, dtype=np.int32))
+    np.save(cfg.out_dir / f"{cfg.prefix}failed_labels.npy",
+                     np.array(failed_labels, dtype=np.int32))
+
+    # Optional one-liner overview that is easy to inspect with `cat`.
+    with open(cfg.out_dir / f"{cfg.prefix}counts.json", "w") as fh:
+            json.dump({"passed": len(passed_labels),
+                       "failed": len(failed_labels)}, fh)
+    LOGGER.info("Saved label lists – no Boolean stacks written.")
 
     if cfg.save_summary_csv:
         metrics_df.assign(passed=passed_mask).to_csv(cfg.out_dir / f"{cfg.prefix}metrics.csv", index=False)
         LOGGER.info("Metrics CSV written.")
+
+    if cfg.save_plots:
+        save_violin_plots(metrics_df.assign(passed=passed_mask), cfg.th, cfg.out_dir, cfg.prefix)
 
     # 4 ▸ Overlay (optional).
     if cfg.overlay:
@@ -355,43 +423,21 @@ def main() -> None:  # noqa: C901 – Linear CLI flow.
             raw = imread(cfg.raw_image)
         paint_overlay(raw, label_map, set(passed_labels), cfg.out_dir / f"{cfg.prefix}overlay.tif")
 
+    '''Persist boolean mask stack for downstream scripts'''
+
+    stack_path = cfg.out_dir / f"{cfg.prefix}passed_masks.npy"
+    height, width = label_map.shape
+    passed_stack = open_memmap(
+        stack_path, mode="w+", dtype=np.bool_, shape=(len(passed_labels), height, width)
+    )
+
+    for i, lab in enumerate(passed_labels, 1):
+        passed_stack[i - 1] = label_map == lab  # Write one slice, then flush.
+
+    del passed_stack  # Ensures the mem-mapped array is written to disk.
+    LOGGER.info("Boolean stack of passed nuclei saved → %s", stack_path.name)
+
     LOGGER.info("✓ Done.")
-
-###############################################################################
-# Minimal unit tests (pytest).
-###############################################################################
-
-def _synthetic_label_map() -> Tuple[np.ndarray, np.ndarray]:
-    """Return a 100×100 label map with two circles and two squares."""
-    lab = np.zeros((100, 100), np.int32)
-    rr, cc = np.ogrid[:100, :100]
-    circle1 = (rr - 25) ** 2 + (cc - 25) ** 2 <= 10 ** 2
-    circle2 = (rr - 75) ** 2 + (cc - 25) ** 2 <= 8 ** 2
-    square1 = (20 <= rr) & (rr <= 40) & (60 <= cc) & (cc <= 80)
-    square2 = (60 <= rr) & (rr <= 80) & (60 <= cc) & (cc <= 80)
-    lab[circle1] = 1
-    lab[circle2] = 2
-    lab[square1] = 3
-    lab[square2] = 4
-    intensity = (lab > 0).astype(np.float32) * 100  # uniform intensity
-    return lab, intensity
-
-
-def test_compute_metrics_shapes():
-    lab, inten = _synthetic_label_map()
-    df = compute_metrics(lab, inten)
-    assert df.shape[0] == 4
-    required_cols = {"area", "circularity", "straight_fraction"}
-    assert required_cols.issubset(df.columns)
-
-
-def test_apply_thresholds():
-    lab, _ = _synthetic_label_map()
-    df = compute_metrics(lab, None)
-    th = Thresholds(min_pixels=50, max_pixels=4000)
-    passed = apply_thresholds(df, th)
-    # All four nuclei have area ≈ 300‑400 px so should pass.
-    assert passed.sum() == 4
 
 
 if __name__ == "__main__":

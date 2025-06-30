@@ -162,7 +162,7 @@ def save_overlay(
     masks: list[np.ndarray],
     passed: np.ndarray,
     out_path: Path,
-    alpha: float = 0.35,   # Fraction of overlay colour to mix in.
+    alpha: float = 0.35,   # Fraction of overlay color to mix in.
 ) -> None:
     """
     Blend passed masks in translucent green and failed masks in translucent red.
@@ -182,7 +182,7 @@ def save_overlay(
     red = np.array([255, 0, 0], dtype=np.uint8)
 
     # ------------------------------------------------------------------
-    # Choose a vivid colour for every *passed* mask so neighbouring
+    # Choose a vivid color for every *passed* mask so neighbouring
     # objects are easy to tell apart. Failed masks stay red.
     # ------------------------------------------------------------------
     palette = np.array(
@@ -200,17 +200,17 @@ def save_overlay(
         ],
         dtype=np.uint8,
     )
-    logger.info("Using %d colours for passed masks.", len(palette))
+    logger.info("Using %d colors for passed masks.", len(palette))
 
     for idx, m in enumerate(masks):
         if passed[idx]:
-            colour = palette[idx % len(palette)]  # Cycle through palette.
+            color = palette[idx % len(palette)]  # Cycle through palette.
         else:
-            colour = red  # Failed mask => red.
+            color = red  # Failed mask => red.
 
         mask_bool = m.astype(bool)
         overlay[mask_bool] = (
-                (1 - alpha) * overlay[mask_bool] + alpha * colour
+                (1 - alpha) * overlay[mask_bool] + alpha * color
         ).astype(np.uint8)
 
     imsave(out_path, overlay)  # skimage automatically saves TIFF format.
@@ -406,7 +406,7 @@ def violin_scatter(
     ylabel: str,
     title: str
 ) -> None:
-    """Draw a violin outline with jittered points and a colour bar."""
+    """Draw a violin outline with jittered points and a color bar."""
 
     # Violin outline.
     vp = ax.violinplot([data], positions=[1], showextrema=False)
@@ -414,7 +414,7 @@ def violin_scatter(
         body.set_facecolor("none")
         body.set_edgecolor("black")
 
-    # Jittered scatter coloured by value.
+    # Jittered scatter colored by value.
     rng = np.random.default_rng(0)
     sc = ax.scatter(
         rng.normal(1, 0.07, len(data)),
@@ -431,7 +431,7 @@ def violin_scatter(
     ax.set_xticklabels([title])
     ax.set_ylabel(ylabel)
 
-    # Add colour bar on the right.
+    # Add color bar on the right.
     plt.colorbar(sc, ax=ax, fraction=0.046, pad=0.04, label=ylabel)
 
 
