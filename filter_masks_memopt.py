@@ -54,7 +54,7 @@ from numpy.lib.format import open_memmap
 import pandas as pd
 from skimage.color import gray2rgb
 from skimage.io import imsave
-from skimage.measure import find_contours, regionprops_table
+from skimage.measure import regionprops_table
 
 logging.basicConfig(
     level=logging.INFO,
@@ -90,10 +90,6 @@ class Thresholds:
     min_hole_fraction: float = 0.0
     max_hole_fraction: float = 1.0
 
-    # Straightness.
-    min_straight_fraction: float = 0.0
-    max_straight_fraction: float = 1.0
-
     # Intensity.
     min_mean_intensity: float = float("-inf")
     max_mean_intensity: float = float("inf")
@@ -125,22 +121,6 @@ class Config:
 ###############################################################################
 # Helper functions – metrics.
 ###############################################################################
-
-def straight_fraction_from_coords(coords: np.ndarray, min_run: int = 4, angle_tol: float = 2.0) -> float:
-    """Return the fraction of boundary pixels that lie on long almost‑straight runs."""
-
-    # vectors between successive points (row, col)
-    vecs = np.diff(coords, axis=0, append=coords[:1])
-    norms = np.linalg.norm(vecs, axis=1, keepdims=True)
-    norms[norms == 0] = 1
-    unit = vecs / norms
-    dot = (unit * np.roll(unit, -1, axis=0)).sum(axis=1).clip(-1, 1)
-    angles = np.degrees(np.arccos(dot))
-    straight = angles < angle_tol
-    runs = np.diff(np.where(np.concatenate(([0], straight, [0])))[0])
-    long_runs = runs[runs >= min_run]
-    return long_runs.sum() / len(coords) if len(coords) else 0.0
-
 
 def compute_metrics(label_map: np.ndarray, intensity: np.ndarray | None) -> pd.DataFrame:
     """Compute morphology metrics for every non‑zero label in *label_map*."""
@@ -175,16 +155,6 @@ def compute_metrics(label_map: np.ndarray, intensity: np.ndarray | None) -> pd.D
     df["hole_fraction"] = (df.filled_area - df.area) / df.area
     df["circularity"] = (4 * np.pi * df.area / (df.perimeter.replace(0, np.nan) ** 2)).clip(0, 1)
 
-    # Straight fraction per nucleus (streamed).
-    straight_vals: List[float] = []
-    for lab in df.label.astype(int):
-        mask = label_map == lab
-        contours = find_contours(mask.astype(float), 0.5)
-        straight_vals.append(
-            straight_fraction_from_coords(contours[0]) if contours else 0.0
-        )
-    df["straight_fraction"] = straight_vals
-
     h, w = label_map.shape
     df["border_touch"] = (
         (df.bbox_0 == 0) | (df.bbox_2 == h) | (df.bbox_1 == 0) | (df.bbox_3 == w)
@@ -204,7 +174,6 @@ def apply_thresholds(df: pd.DataFrame, th: Thresholds) -> np.ndarray:
         df.eccentricity.between(th.min_eccentricity, th.max_eccentricity),
         df.aspect_ratio.between(th.min_aspect_ratio, th.max_aspect_ratio),
         df.hole_fraction.between(th.min_hole_fraction, th.max_hole_fraction),
-        df.straight_fraction.between(th.min_straight_fraction, th.max_straight_fraction),
     ]
     if "mean_intensity" in df.columns:
         conds.append(df.mean_intensity.between(th.min_mean_intensity, th.max_mean_intensity))

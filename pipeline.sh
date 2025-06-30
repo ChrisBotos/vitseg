@@ -28,10 +28,10 @@ PATCH_SIZES=(16 32 64)
 
 # Initial guess for the number of K-Means clusters. It can be overridden automatically.
 K_INIT=10
-AUTO_K="none"           # Choose “silhouette”, “dbi” or “none”.
+AUTO_K="silhouette"           # Choose “silhouette”, “dbi” or “none”.
 
 # Patch-extraction batch size (higher is faster but needs more GPU memory).
-BATCH_SIZE=4096
+BATCH_SIZE=16384
 
 # Visualisation box in *fractional* image coordinates: ymin ymax xmin xmax.
 # Keep 0 1 0 1 to process the full frame or tighten it to zoom.
@@ -44,15 +44,14 @@ MIN_SOL=0.80        ; MAX_SOL=1.00
 MIN_ECC=0.00        ; MAX_ECC=0.98
 MIN_AR=0.50         ; MAX_AR=3.20
 MIN_HOLE=0.00       ; MAX_HOLE=0.001
-MAX_STRAIGHT=0.22   # Only an upper bound is useful here.
 
 #######################################
 # Derived paths – change only if needed.
 #######################################
 BASE=$(basename "${IMAGE%.*}")              # e.g. IRI_regist_cropped
-FILTER_DIR="test_run"               # All outputs from filter_masks.py.
-PATCH_DIR="test_run"             # All patch CSVs/NPYs live here.
-CLUSTER_DIR="test_run"         # Final clustering artefacts.
+FILTER_DIR="test_fifth_run"               # All outputs from filter_masks.py.
+PATCH_DIR="test_fifth_run"             # All patch CSVs/NPYs live here.
+CLUSTER_DIR="test_fifth_run"         # Final clustering artefacts.
 
 ###############################################################################
 # 1. Filter segmentation masks.
@@ -68,7 +67,6 @@ python filter_masks_memopt.py \
     --min-eccentricity "${MIN_ECC}"          --max-eccentricity "${MAX_ECC}" \
     --min-aspect-ratio "${MIN_AR}"           --max-aspect-ratio "${MAX_AR}"  \
     --min-hole-fraction "${MIN_HOLE}"        --max-hole-fraction "${MAX_HOLE}" \
-    --max-straight-fraction "${MAX_STRAIGHT}" \
     --summary-csv \
     --raw-image "${IMAGE}" \
     --overlay
