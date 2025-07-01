@@ -108,7 +108,6 @@ def extract_and_save_patches(
     model_name: str,
     use_amp: bool,
     workers: int | None,
-    crop_region: Tuple[float, float, float, float] | None,
     viz_crop_region: Tuple[float, float, float, float] | None,
     compile_model: bool,
     save_numpy: bool,
@@ -169,24 +168,6 @@ def extract_and_save_patches(
                 ys, xs = np.nonzero(raw_seg == lab)
             if xs.size:
                 centroids.append((int(xs.mean()), int(ys.mean())))
-
-    """
-    Optional cropping of the image and masks.
-    If we cropped the masks we recompute centroids to stay consistent.
-    """
-    if crop_region is not None:
-        xmin, xmax, ymin, ymax = crop_region
-        w, h = image.size
-        l, t, r, b = int(xmin * w), int(ymin * h), int(xmax * w), int(ymax * h)
-        image = image.crop((l, t, r, b))                     # Crop the RGB slide.
-        if masks is not None:
-            masks = masks[:, t:b, l:r]                       # Crop the mask stack.
-            centroids = compute_centroids(masks)             # Recompute centroids.
-        else:
-            # Adjust centroids from label-list mode.
-            centroids = [(x - l, y - t)
-                         for (x, y) in centroids
-                         if l <= x < r and t <= y < b]
 
     """
     Safety check.
@@ -308,7 +289,6 @@ def build_argparser():
     p.add_argument("--no_amp", action="store_true")
     p.add_argument("--no_compile", action="store_true")
     p.add_argument("--workers", type=int)
-    p.add_argument("--crop_region", nargs=4, type=float)
     p.add_argument("--viz_crop_region", nargs=4, type=float)
     p.add_argument("--save_numpy", action="store_true")
     p.add_argument("--label_map", type=Path, help = "Path to the original label map " 
@@ -331,7 +311,6 @@ def main():
         model_name=a.model_name,
         use_amp=not a.no_amp,
         workers=a.workers,
-        crop_region=tuple(a.crop_region) if a.crop_region else None,
         viz_crop_region=tuple(a.viz_crop_region) if a.viz_crop_region else None,
         compile_model=not a.no_compile,
         save_numpy=a.save_numpy,

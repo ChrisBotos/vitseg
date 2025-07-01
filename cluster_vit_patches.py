@@ -80,13 +80,29 @@ def parse_arguments() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    io = parser.add_argument_group("Input/Output")
-    io.add_argument("-i", "--image", type=Path, required=True, help="Microscopy image (e.g. DAPI).")
-    io.add_argument("-m", "--mask", type=Path, required=True, help="`*.npy` mask label image produced by segmentation.")
-    io.add_argument("-c", "--coords", type=Path, required=True, help="Patch centroid coordinates CSV (x_center, y_center).")
-    io.add_argument("-f", "--features", type=Path, required=True, help="Patch feature CSV (rows align with `--coords`).")
-    io.add_argument("--outdir", type=Path, default=Path("results"), help="Directory for all generated artefacts.")
-    io.add_argument("--log", type=Path, default=None, help="Optional path to a log file.")
+    """I/O always required"""
+    io = parser.add_argument_group("Input / Output")
+    io.add_argument("-i", "--image", type=Path, required=True,
+                    help="Microscopy image (e.g. DAPI).")
+    io.add_argument("-c", "--coords", type=Path, required=True,
+                    help="Patch-centroid CSV (x_center, y_center).")
+    io.add_argument("-f", "--features", type=Path, required=True,
+                    help="Patch-feature CSV (rows align with --coords).")
+    io.add_argument("--outdir", type=Path, default=Path("results"),
+                    help="Directory for all generated artefacts.")
+    io.add_argument("--log", type=Path,
+                    help="Optional path to a log file.")
+
+    """Choose exactly ONE mask input"""
+    mx = io.add_mutually_exclusive_group(required=True)
+    mx.add_argument("-m", "--mask", type=Path,
+                    help="2-D label map OR 3-D Boolean stack (.npy).")
+    mx.add_argument("--labels", type=Path,
+                    help="1-D label list (.npy).")
+
+    """Only needed when you use --labels"""
+    parser.add_argument("--label_map", type=Path,
+                        help="Original 2-D segmentation map; REQUIRED with --labels.")
 
     model = parser.add_argument_group("Model")
     model.add_argument("-k", "--clusters", type=int, default=10, help="Initial K for K‑Means.")
@@ -181,7 +197,7 @@ def save_overlay_from_masks(
         img = img.crop((l, t, r, b))                       # PIL object.
         masks = masks[:, t:b, l:r]                         # NumPy slice.
 
-    # ── 2 ▸ Prepare RGB layers ─────────────────────────────────────────────────
+    # ── 2 ▸ Prepare RGB layers"""─
     rgb     = np.array(img.convert("RGB"), dtype=np.uint8)
     overlay = rgb.copy()
 
@@ -190,14 +206,14 @@ def save_overlay_from_masks(
         cl          = int(labels[idx])
         R, G, B, A  = palette.get(cl, (160, 160, 160, int(alpha * 255)))
         colour      = np.array([R, G, B], dtype=np.uint8)
-        α           = (A / 255.0) * alpha
+        a           = (A / 255.0) * alpha
 
         mask_bool   = m.astype(bool)
         overlay[mask_bool] = (
-            (1 - α) * overlay[mask_bool] + α * colour
+            (1 - a) * overlay[mask_bool] + a * colour
         ).astype(np.uint8)
 
-    # ── 4 ▸ Write TIFF to disk ─────────────────────────────────────────────────
+    # ── 4 ▸ Write TIFF to disk"""─
     imsave(str(out_path), overlay)
 
 
@@ -266,7 +282,21 @@ def main() -> None:  # noqa: C901 – Function intentionally lengthy for linear 
     # Load inputs: raw image, segmentation mask, coordinates & features.
     # ---------------------------------------------------------------------
     img = Image.open(args.image).convert("RGB")  # Load raw RGB image.
-    mask = np.load(args.mask)                    # Load segmentation masks array.
+
+    if args.labels is not None:
+
+        if args.label_map is None:
+            logging.error("--label_map is required when --labels is used.")
+            sys.exit(1)
+
+        label_ids = np.load(args.labels).astype(int)
+        label_map = np.load(args.label_map, mmap_mode="r")
+        # Build a Boolean stack on-the-fly for overlay only:
+        mask = np.array([label_map == lab for lab in label_ids], dtype=bool)
+
+    else:
+        mask = np.load(args.mask, mmap_mode="r")
+
     coords_df = pd.read_csv(args.coords)         # Patch coords for clustering.
     features_df = pd.read_csv(args.features)     # DINO-ViT features per patch.
     if len(coords_df) != len(features_df):

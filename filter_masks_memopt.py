@@ -121,6 +121,7 @@ class Config:
     raw_image: str | None
     overlay: bool
     region: Tuple[float, float, float, float] | None = None
+    no_stack: bool = True
 
 ###############################################################################
 # Helper functions – metrics.
@@ -366,6 +367,8 @@ def parse_cli() -> Config:
     a.add_argument("--region", nargs=4, type=float,
                    metavar=("XMIN", "XMAX", "YMIN", "YMAX"),
                    help="Restrict overlay to this fractional box (0-1 coordinates).")
+    a.add_argument("--no_stack", action="store_true",
+                   help="Skip writing the Boolean mask stack.")
 
     add_threshold_args(a)
     args = a.parse_args()
@@ -387,6 +390,7 @@ def parse_cli() -> Config:
         raw_image=str(args.raw_image) if args.raw_image else None,
         overlay=args.overlay,
         region=tuple(args.region) if args.region else None,
+        no_stack=args.no_stack,
     )
 
 ###############################################################################
@@ -456,6 +460,10 @@ def main() -> None:  # noqa: C901 – Linear CLI flow.
         )
 
     '''Persist boolean mask stack for downstream scripts'''
+    if cfg.no_stack:
+        LOGGER.info("Flag --no_stack set – skipping Boolean-stack export.")
+        LOGGER.info("✓ Done.")
+        return  # ← Early exit; everything else is already written.
 
     stack_path = cfg.out_dir / f"{cfg.prefix}passed_masks.npy"
     height, width = label_map.shape

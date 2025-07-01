@@ -21,10 +21,11 @@ PATCH_SIZES=(16 32 64)
 
 K_INIT=10
 AUTO_K="silhouette"
-BATCH_SIZE=16384
+BATCH_SIZE=512
+WORKERS=8
 
 # Visualisation box – note the X-first order.
-VIZ_BOX=(0.36 0.67 0.30 0.51)   # xmin xmax ymin ymax
+VIZ_BOX=(0.62 0.67 0.46 0.51)   # xmin xmax ymin ymax
 
 # Morphology thresholds.
 MIN_PIXELS=20       ; MAX_PIXELS=570
@@ -33,6 +34,9 @@ MIN_SOL=0.80        ; MAX_SOL=1.00
 MIN_ECC=0.00        ; MAX_ECC=0.98
 MIN_AR=0.50         ; MAX_AR=3.20
 MIN_HOLE=0.00       ; MAX_HOLE=0.001
+
+# Extra.
+NO_STACK=true
 
 ###############################################################################
 # Derived paths.
@@ -59,7 +63,8 @@ python filter_masks_memopt.py \
     --summary-csv \
     --raw-image "${IMAGE}" \
     --overlay \
-    --region "${VIZ_BOX[@]}"
+    --region "${VIZ_BOX[@]}" \
+    ${NO_STACK:+--no_stack}
 
 ###############################################################################
 # 2. Extract ViT patch embeddings.
@@ -74,6 +79,7 @@ python segmentation_mask_dynamic_patches_vit.py \
     --label_map "${RAW_MASKS}" \
     --output "${PATCH_DIR}" \
     --patch_sizes "${PATCH_SIZE_ARGS[@]}" \
+    --workers "${WORKERS}" \
     --batch_size "${BATCH_SIZE}" \
     --model_name "facebook/dino-vits16" \
     --viz_crop_region "${VIZ_BOX[@]}"
@@ -84,7 +90,8 @@ python segmentation_mask_dynamic_patches_vit.py \
 echo "➤ Clustering patch embeddings …"
 python cluster_vit_patches.py \
     --image   "${IMAGE}" \
-    --mask    "${FILTER_DIR}/filtered_passed_masks.npy" \
+    --labels  "${FILTER_DIR}/filtered_passed_labels.npy" \
+    --label_map "${RAW_MASKS}" \
     --coords  "${PATCH_DIR}/coords_${BASE}.csv" \
     --features "${PATCH_DIR}/features_${BASE}.csv" \
     --clusters "${K_INIT}" \
