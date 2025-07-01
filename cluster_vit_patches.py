@@ -35,6 +35,7 @@ import numpy as np
 from skimage.io import imsave
 import pandas as pd
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import davies_bouldin_score, silhouette_score

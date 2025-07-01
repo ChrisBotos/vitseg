@@ -43,6 +43,7 @@ import os
 import argparse
 from pathlib import Path
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms

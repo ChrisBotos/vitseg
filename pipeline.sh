@@ -28,9 +28,9 @@ WORKERS=8
 VIZ_BOX=(0.62 0.67 0.46 0.51)   # xmin xmax ymin ymax
 
 # Morphology thresholds.
-MIN_PIXELS=20       ; MAX_PIXELS=570
-MIN_CIRC=0.63       ; MAX_CIRC=1.00
-MIN_SOL=0.80        ; MAX_SOL=1.00
+MIN_PIXELS=20       ; MAX_PIXELS=1000
+MIN_CIRC=0.6       ; MAX_CIRC=1.00
+MIN_SOL=0.75       ; MAX_SOL=1.00
 MIN_ECC=0.00        ; MAX_ECC=0.98
 MIN_AR=0.50         ; MAX_AR=3.20
 MIN_HOLE=0.00       ; MAX_HOLE=0.001

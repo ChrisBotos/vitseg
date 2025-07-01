@@ -48,6 +48,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 from PIL import Image, ImageDraw
+Image.MAX_IMAGE_PIXELS = None
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from tqdm import tqdm
