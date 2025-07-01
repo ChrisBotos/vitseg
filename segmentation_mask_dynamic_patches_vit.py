@@ -82,16 +82,36 @@ def compute_centroids(mask_array: np.ndarray) -> List[Tuple[int, int]]:
 
 
 class PatchDataset(Dataset):
-    """Dataset that resizes a list of PIL patches and returns tensors + coords."""
-
-    def __init__(self, patches: Sequence[Image.Image], coords: Sequence[Tuple[int, int]], tfm):
-        self.patches, self.coords, self.tfm = patches, coords, tfm
+    """
+    Lazily crops the slide on __getitem__ so DataLoader workers run
+    in parallel while the GPU is already busy.
+    """
+    def __init__(self,
+                 slide: Image.Image,
+                 centroids: List[Tuple[int, int]],
+                 size: int,
+                 tfm):
+        self.slide      = slide
+        self.centroids  = centroids     # (x, y)
+        self.size       = size          # crop side in px
+        self.tfm        = tfm
 
     def __len__(self):
-        return len(self.patches)
+        return len(self.centroids)
 
     def __getitem__(self, idx):
-        return self.tfm(self.patches[idx]), *self.coords[idx]
+        x, y   = self.centroids[idx]
+        half   = self.size // 2
+        l, t   = max(x-half, 0),         max(y-half, 0)
+        r, b   = min(x+half, self.slide.width), min(y+half, self.slide.height)
+
+        patch  = self.slide.crop((l, t, r, b))
+        if patch.size != (self.size, self.size):
+            canvas = Image.new("RGB", (self.size, self.size))
+            canvas.paste(patch, (l-(x-half), t-(y-half)))
+            patch = canvas
+
+        return self.tfm(patch), x, y
 
 
 # ---------------------------- Core function ------------------------------- #
@@ -181,7 +201,7 @@ def extract_and_save_patches(
 
     """Optional patch visualisation"""
     if viz_crop_region is not None:
-        # deterministic but distinct colors by crop size
+        # Deterministic but distinct colors by crop size.
         random.seed(42)
         palette = ["red"] + [f"#{random.randint(0, 0xFFFFFF):06x}"
                              for _ in range(len(sizes) - 1)]
@@ -236,18 +256,13 @@ def extract_and_save_patches(
 
     for s in sizes:
         LOGGER.info("Embedding %d‑px crops …", s)
-        h = s//2
-        patches, coords = [], []
-        for x, y in centroids:
-            l, t = max(x-h,0), max(y-h,0)
-            r, b = min(x+h, image.width), min(y+h, image.height)
-            patch = image.crop((l, t, r, b))
-            if patch.size != (s, s):
-                canvas = Image.new("RGB", (s, s)); canvas.paste(patch, (l-(x-h), t-(y-h))); patch = canvas
-            patches.append(patch); coords.append((x, y))
 
-        loader = DataLoader(PatchDataset(patches, coords, tfm), batch_size=batch_size, shuffle=False,
-                            num_workers=workers or 0, pin_memory=device.type=="cuda",
+        dataset = PatchDataset(image, centroids, s, tfm)
+        loader = DataLoader(dataset,
+                            batch_size=batch_size,
+                            shuffle=False,
+                            num_workers=workers or 0,
+                            pin_memory=device.type == "cuda",
                             persistent_workers=(workers or 0) > 0)
 
         feats: List[np.ndarray] = []
