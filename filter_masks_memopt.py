@@ -1,6 +1,6 @@
 """
 Author: Christos Botos.
-Affiliation: Institute of Molecular Biology and Biotechnology
+Affiliation: Leiden University Medical Center
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
 Script Name: filter_masks_memopt.py.
