@@ -53,6 +53,7 @@ from typing import Dict, List, Sequence, Tuple
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageDraw
+Image.MAX_IMAGE_PIXELS = None
 from skimage.measure import regionprops_table
 from tqdm import tqdm
 

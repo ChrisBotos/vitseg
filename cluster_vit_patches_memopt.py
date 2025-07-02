@@ -58,6 +58,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -92,24 +93,46 @@ def compute_label_cluster_map(label_map, passed_labels, coords_df, cluster_ids):
     return mapped
 
 ''' Save RGBA overlay of clusters on the image '''
-def save_overlay_from_masks(image_path, overlay_map, palette, alpha, region, out_path):
-    base = Image.open(image_path).convert('RGBA')
-    overlay = Image.new('RGBA', base.size, (0,0,0,0))
-    data = np.array(overlay_map)
-    for cid, color in enumerate(palette, start=1):
-        mask = (data == cid)
-        color_img = Image.new('RGBA', base.size, color + (0,))
-        mask_img = Image.fromarray((mask * int(255*alpha)).astype(np.uint8))
-        color_img.putalpha(mask_img)
-        overlay = Image.alpha_composite(overlay, color_img)
-    composite = Image.alpha_composite(base, overlay)
-    if region:
-        xmin, xmax, ymin, ymax = region
-        w, h = base.size
-        crop = (int(xmin*w), int(ymin*h), int(xmax*w), int(ymax*h))
-        composite = composite.crop(crop)
+def save_overlay(img_path: Path, seg_map_path: Path, passed_labels: np.ndarray, cluster_ids: np.ndarray,
+                palette, region, out_path: Path, alpha: float = 0.35, down: int = 1) -> None:
+    """Write an RGBA overlay without materialising full‑frame masks.
+
+    The pipeline is:
+        1. Memory‑map the segmentation mask.
+        2. Crop *before* any heavy processing.
+        3. Vector‑map label → cluster via LUT.
+        4. Convert to RGBA using a pre‑baked NumPy palette.
+        5. Alpha‑composite onto the (cropped, optionally down‑sampled) source image.
+    """
+    # Load base image once
+    base_full = Image.open(img_path).convert('RGBA')
+    w, h = base_full.size
+    x0, x1, y0, y1 = _slice_region(h, w, region)
+
+    # Crop first to minimise RAM.
+    base_crop = base_full.crop((x0, y0, x1, y1))
+    seg = np.load(seg_map_path, mmap_mode='r')[y0:y1, x0:x1]
+
+    # Optional overlay down‑sampling.
+    if down > 1:
+        seg = seg[::down, ::down]
+        base_crop = base_crop.resize((seg.shape[1], seg.shape[0]), Image.BILINEAR)
+
+    # Label → cluster map via LUT (fully vectorised).
+    lut = _build_lut(int(seg.max()), passed_labels, cluster_ids)
+    cluster_map = lut[seg]
+
+    # Build an (k+1, 4) RGBA palette. Row 0 is transparent background.
+    k = len(palette)
+    rgba = np.zeros((k + 1, 4), dtype=np.uint8)
+    for idx, (r, g, b) in enumerate(palette, start=1):
+        rgba[idx, :3] = (r, g, b)
+        rgba[idx, 3] = int(alpha * 255)
+
+    overlay = Image.fromarray(rgba[cluster_map], mode='RGBA')
+    composite = Image.alpha_composite(base_crop, overlay)
     composite.save(out_path)
-    logging.info(f'Overlay saved → {out_path}')
+    logging.info('Overlay saved → %s', out_path)
 
 ''' Choose optimal K via silhouette or Davies-Bouldin '''
 def choose_optimal_k(features, k_max, criterion, sample_size=5000):
@@ -166,6 +189,8 @@ def main():
     parser.add_argument('--outdir', type=Path, default=Path('results'))
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--region', type=float, nargs=4)
+    parser.add_argument('--downsample', type=int, default=1, help='Downsampling factor for overlay (integer > 1).')
+
     args = parser.parse_args()
 
     configure_logging()
@@ -205,13 +230,7 @@ def main():
     coords_df['cluster'] = labels
     coords_df.to_csv(args.outdir/'patch_clusters.csv', index=False)
 
-    logging.info('Creating overlay map...')
-    passed = np.load(args.labels)
-    seg_map = np.load(args.label_map, mmap_mode='r')
-    overlay_map = compute_label_cluster_map(seg_map, passed, coords_df, labels)
     palette = generate_color_palette(k)
-    save_overlay_from_masks(args.image, overlay_map, palette, alpha=0.35, region=args.region,
-                             out_path=args.outdir/'overlay_clusters.tif')
 
     logging.info('Plotting PCA scatter...')
     sample_idx = np.random.RandomState(args.seed).choice(n, min(5000, n), replace=False)
@@ -221,6 +240,13 @@ def main():
     plt.title('PCA of patch clusters')
     plt.savefig(args.outdir/'pca_clusters.png')
     logging.info('PCA plot saved.')
+
+    logging.info('Creating overlay…')
+    passed = np.load(args.labels)
+    palette = generate_color_palette(k)
+    save_overlay(args.image, args.label_map, passed, labels, palette,
+                region=args.region, out_path=args.outdir / 'overlay_clusters.tif',
+                alpha=0.35, down=args.downsample)
 
 if __name__=='__main__':
     main()
