@@ -14,6 +14,7 @@ set -euo pipefail
 # User-editable parameters.
 ###############################################################################
 IMAGE="img/IRI_regist_cropped.tif"
+BINARY_IMAGE="img/binary_mask.tif"
 RAW_MASKS="segmentation_masks.npy"
 
 # ViT crop sizes in pixels.
@@ -66,8 +67,16 @@ CLUSTER_DIR="test_fifth_run"
 #    --region "${VIZ_BOX[@]}" \
 #    ${NO_STACK:+--no_stack}
 #
+
+###############################################################################
+# 2. Turn the image to binary, 1 for pixels in masks 0 for all others.
+###############################################################################
+python segmentation_mask_to_binary_vit_input.py \
+         --mask "${RAW_MASKS}" \
+         --output "${BINARY_IMAGE}"
+
 ################################################################################
-## 2. Extract ViT patch embeddings.
+## 3. Extract ViT patch embeddings.
 ################################################################################
 #echo "➤ Extracting Vision-Transformer patch embeddings …"
 #PATCH_SIZE_ARGS=()
@@ -85,13 +94,14 @@ CLUSTER_DIR="test_fifth_run"
 #    --viz_crop_region "${VIZ_BOX[@]}" \
 #    --no_compile
 
+
 ###############################################################################
-# 3. Cluster the embeddings and overlay results.
+# 4. Cluster the embeddings and overlay results.
 ###############################################################################
 echo "➤ Clustering patch embeddings …"
 
 python cluster_vit_patches_memopt.py \
-    --image     "${IMAGE}" \
+    --image     "${BINARY_IMAGE}" \
     --labels    "${FILTER_DIR}/filtered_passed_labels.npy" \
     --label_map "${RAW_MASKS}" \
     --coords    "${PATCH_DIR}/coords_${BASE}.csv" \
@@ -99,7 +109,7 @@ python cluster_vit_patches_memopt.py \
     --clusters  "${K_INIT}" \
     --auto-k    "${AUTO_K}" \
     --outdir    "${CLUSTER_DIR}" \
-    --region    "${VIZ_BOX[@]}"
+    --region    0 1 0 1
 
 echo "✓ Pipeline completed successfully."
 

@@ -68,6 +68,31 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import random
 
+"""Compute slicing indices from fractional region specification."""
+def _slice_region(height: int, width: int, region: tuple[float, float, float, float]) -> tuple[int, int, int, int]:
+    """
+    Compute integer slice indices (x0, y0, x1, y1) from fractional region.
+    Region format: (xmin, xmax, ymin, ymax) as fractions of width and height.
+    """
+    xmin, xmax, ymin, ymax = region
+    x0 = max(0, int(width * xmin))
+    x1 = min(width, int(width * xmax))
+    y0 = max(0, int(height * ymin))
+    y1 = min(height, int(height * ymax))
+    return x0, x1, y0, y1
+
+"""Build a lookup table from label IDs to cluster indices."""
+def _build_lut(max_label: int, labels: np.ndarray, cluster_ids: np.ndarray) -> np.ndarray:
+    """
+    Create a lookup table (LUT) of size max_label+1 mapping original labels to cluster index+1.
+    Entry 0 remains 0 (transparent background).
+    """
+    lut = np.zeros(max_label + 1, dtype=np.int32)
+    for lab, cid in zip(labels, cluster_ids):
+        if 0 <= lab <= max_label:
+            lut[int(lab)] = int(cid) + 1
+    return lut
+
 ''' Configure root logger '''
 def configure_logging():
     logging.basicConfig(level=logging.INFO,
@@ -78,11 +103,6 @@ def configure_logging():
 def set_global_seed(seed: int):
     np.random.seed(seed)
     random.seed(seed)
-
-''' Generate distinct color palette for clusters '''
-def generate_color_palette(n_clusters):
-    palette = sns.color_palette('hsv', n_clusters)
-    return [(int(r*255), int(g*255), int(b*255)) for r, g, b in palette]
 
 ''' Compute mapping from cluster IDs back onto full segmentation mask '''
 def compute_label_cluster_map(label_map, passed_labels, coords_df, cluster_ids):
@@ -95,44 +115,26 @@ def compute_label_cluster_map(label_map, passed_labels, coords_df, cluster_ids):
 ''' Save RGBA overlay of clusters on the image '''
 def save_overlay(img_path: Path, seg_map_path: Path, passed_labels: np.ndarray, cluster_ids: np.ndarray,
                 palette, region, out_path: Path, alpha: float = 0.35, down: int = 1) -> None:
-    """Write an RGBA overlay without materialising full‑frame masks.
-
-    The pipeline is:
-        1. Memory‑map the segmentation mask.
-        2. Crop *before* any heavy processing.
-        3. Vector‑map label → cluster via LUT.
-        4. Convert to RGBA using a pre‑baked NumPy palette.
-        5. Alpha‑composite onto the (cropped, optionally down‑sampled) source image.
-    """
-    # Load base image once
+    """Write an RGBA overlay without materialising full‑frame masks."""
     base_full = Image.open(img_path).convert('RGBA')
     w, h = base_full.size
     x0, x1, y0, y1 = _slice_region(h, w, region)
-
-    # Crop first to minimise RAM.
     base_crop = base_full.crop((x0, y0, x1, y1))
     seg = np.load(seg_map_path, mmap_mode='r')[y0:y1, x0:x1]
-
-    # Optional overlay down‑sampling.
     if down > 1:
         seg = seg[::down, ::down]
         base_crop = base_crop.resize((seg.shape[1], seg.shape[0]), Image.BILINEAR)
-
-    # Label → cluster map via LUT (fully vectorised).
     lut = _build_lut(int(seg.max()), passed_labels, cluster_ids)
     cluster_map = lut[seg]
-
-    # Build an (k+1, 4) RGBA palette. Row 0 is transparent background.
     k = len(palette)
     rgba = np.zeros((k + 1, 4), dtype=np.uint8)
     for idx, (r, g, b) in enumerate(palette, start=1):
         rgba[idx, :3] = (r, g, b)
         rgba[idx, 3] = int(alpha * 255)
-
     overlay = Image.fromarray(rgba[cluster_map], mode='RGBA')
     composite = Image.alpha_composite(base_crop, overlay)
     composite.save(out_path)
-    logging.info('Overlay saved → %s', out_path)
+    logging.info('Overlay saved → %s', out_path)
 
 ''' Choose optimal K via silhouette or Davies-Bouldin '''
 def choose_optimal_k(features, k_max, criterion, sample_size=5000):
@@ -190,8 +192,31 @@ def main():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--region', type=float, nargs=4)
     parser.add_argument('--downsample', type=int, default=1, help='Downsampling factor for overlay (integer > 1).')
+    parser.add_argument('--test', action='store_true', help='Run unit tests.')
 
     args = parser.parse_args()
+
+    if args.test:
+        import unittest
+        class TestUtils(unittest.TestCase):
+            def test_slice_region(self):
+                h, w = 100, 200
+                region = (0.1, 0.5, 0.2, 0.6)
+                x0, x1, y0, y1 = _slice_region(h, w, region)
+                self.assertEqual((x0, x1, y0, y1), (20, 100, 20, 60))
+
+            def test_build_lut(self):
+                labels = np.array([1, 3, 5])
+                clusters = np.array([0, 2, 4])
+                lut = _build_lut(6, labels, clusters)
+                expected = np.zeros(7, dtype=np.int32)
+                expected[1] = 1
+                expected[3] = 3
+                expected[5] = 5
+                np.testing.assert_array_equal(lut, expected)
+
+        unittest.main(argv=[sys.argv[0]])
+        return
 
     configure_logging()
     set_global_seed(args.seed)
@@ -217,6 +242,12 @@ def main():
     else:
         k = args.clusters
 
+    raw_palette = sns.color_palette('hsv', k)               # floats in [0,1]
+    overlay_palette = [                                    # ints in [0,255]
+        (int(r*255), int(g*255), int(b*255))
+        for r, g, b in raw_palette
+    ]
+
     logging.info(f'Clustering into {k} clusters...')
     kmeans = cluster_streaming(scaled, args.batch_size, k, args.seed)
     joblib.dump(kmeans, args.outdir/'kmeans_model.joblib')
@@ -230,23 +261,21 @@ def main():
     coords_df['cluster'] = labels
     coords_df.to_csv(args.outdir/'patch_clusters.csv', index=False)
 
-    palette = generate_color_palette(k)
 
     logging.info('Plotting PCA scatter...')
     sample_idx = np.random.RandomState(args.seed).choice(n, min(5000, n), replace=False)
     pcs = PCA(2).fit_transform(scaled[sample_idx])
     plt.figure()
-    sns.scatterplot(x=pcs[:,0], y=pcs[:,1], hue=labels[sample_idx], palette=palette, legend=False)
+    sns.scatterplot(x=pcs[:,0], y=pcs[:,1], hue=labels[sample_idx], palette=raw_palette, legend=False)
     plt.title('PCA of patch clusters')
     plt.savefig(args.outdir/'pca_clusters.png')
     logging.info('PCA plot saved.')
 
     logging.info('Creating overlay…')
     passed = np.load(args.labels)
-    palette = generate_color_palette(k)
-    save_overlay(args.image, args.label_map, passed, labels, palette,
+    save_overlay(args.image, args.label_map, passed, labels, overlay_palette,
                 region=args.region, out_path=args.outdir / 'overlay_clusters.tif',
                 alpha=0.35, down=args.downsample)
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
