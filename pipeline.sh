@@ -13,15 +13,15 @@ set -euo pipefail
 ###############################################################################
 # User-editable parameters.
 ###############################################################################
-IMAGE="img/IRI_regist_cropped.tif"
+IMAGE="img/IRI_regist.tif"
 BINARY_IMAGE="img/binary_mask.tif"
-RAW_MASKS="segmentation_masks.npy"
+RAW_MASKS="segmentation_masks_whole.npy"
 
 # ViT crop sizes in pixels.
 PATCH_SIZES=(16 32 64)
 
-K_INIT=10
-AUTO_K="silhouette"
+K_INIT=20
+AUTO_K="none"
 BATCH_SIZE=512
 WORKERS=8
 
@@ -43,9 +43,9 @@ NO_STACK=true
 # Derived paths.
 ###############################################################################
 BASE=$(basename "${IMAGE%.*}")
-FILTER_DIR="test_fifth_run"
-PATCH_DIR="test_fifth_run"
-CLUSTER_DIR="test_fifth_run"
+FILTER_DIR="whole_run"
+PATCH_DIR="whole_run_20k_binary"
+CLUSTER_DIR="whole_run_20k_binary"
 
 ################################################################################
 ## 1. Filter segmentation masks.
@@ -75,24 +75,24 @@ python segmentation_mask_to_binary_vit_input.py \
          --mask "${RAW_MASKS}" \
          --output "${BINARY_IMAGE}"
 
-################################################################################
-## 3. Extract ViT patch embeddings.
-################################################################################
-#echo "➤ Extracting Vision-Transformer patch embeddings …"
-#PATCH_SIZE_ARGS=()
-#for S in "${PATCH_SIZES[@]}"; do PATCH_SIZE_ARGS+=( "$S" ); done
-#
-#python segmentation_mask_dynamic_patches_vit.py \
-#    --image "${IMAGE}" \
-#    --mask  "${FILTER_DIR}/filtered_passed_labels.npy" \
-#    --label_map "${RAW_MASKS}" \
-#    --output "${PATCH_DIR}" \
-#    --patch_sizes "${PATCH_SIZE_ARGS[@]}" \
-#    --workers "${WORKERS}" \
-#    --batch_size "${BATCH_SIZE}" \
-#    --model_name "facebook/dino-vits16" \
-#    --viz_crop_region "${VIZ_BOX[@]}" \
-#    --no_compile
+###############################################################################
+# 3. Extract ViT patch embeddings.
+###############################################################################
+echo "➤ Extracting Vision-Transformer patch embeddings …"
+PATCH_SIZE_ARGS=()
+for S in "${PATCH_SIZES[@]}"; do PATCH_SIZE_ARGS+=( "$S" ); done
+
+python segmentation_mask_dynamic_patches_vit.py \
+    --image "${BINARY_IMAGE}" \
+    --mask  "${FILTER_DIR}/filtered_passed_labels.npy" \
+    --label_map "${RAW_MASKS}" \
+    --output "${PATCH_DIR}" \
+    --patch_sizes "${PATCH_SIZE_ARGS[@]}" \
+    --workers "${WORKERS}" \
+    --batch_size "${BATCH_SIZE}" \
+    --model_name "facebook/dino-vits16" \
+    --viz_crop_region "${VIZ_BOX[@]}" \
+    --no_compile
 
 
 ###############################################################################
@@ -101,7 +101,7 @@ python segmentation_mask_to_binary_vit_input.py \
 echo "➤ Clustering patch embeddings …"
 
 python cluster_vit_patches_memopt.py \
-    --image     "${BINARY_IMAGE}" \
+    --image     "${IMAGE}" \
     --labels    "${FILTER_DIR}/filtered_passed_labels.npy" \
     --label_map "${RAW_MASKS}" \
     --coords    "${PATCH_DIR}/coords_${BASE}.csv" \
@@ -112,4 +112,3 @@ python cluster_vit_patches_memopt.py \
     --region    0 1 0 1
 
 echo "✓ Pipeline completed successfully."
-
