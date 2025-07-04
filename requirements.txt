@@ -32,6 +32,7 @@ pillow==11.2.1
 imageio==2.32.1            # Matches scikit-image 0.23 wheels.
 scikit-image==0.23.2
 pywavelets==1.8.0          # Direct dependency of scikit-image.
+imagecodecs==2025.3.30     # Matches scikit-image 0.23 wheels.
 
 # ---------- Machine-learning -------------------------------------------------
 scikit-learn==1.7.0
