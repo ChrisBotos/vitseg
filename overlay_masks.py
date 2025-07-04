@@ -62,6 +62,11 @@ def _blend_tile(
             # Any import or runtime error → fall back to NumPy.
             xp = np
 
+
+    if tile_img.dtype != np.uint8:
+        # Scale THIS tile to 0-255 –  keeps contrast whatever the bit-depth is.
+        tile_img = (tile_img.astype(np.float32) / tile_img.max()) * 255.0
+
     # Convert inputs to the chosen backend.
     img = xp.asarray(tile_img, dtype=xp.float32)
     mask = xp.asarray(tile_mask, dtype=xp.int32)
@@ -128,9 +133,8 @@ def overlay(
     mask_path = Path(mask_path)
     out_path = Path(out_path)
 
-    # Inspect dimensions without reading the entire image.
-    with tiff.TiffFile(image_path, mode="r") as tif:
-        height, width = tif.series[0].shape[:2]
+    with tiff.TiffFile(image_path) as tif:
+        height, width = tif.series[0].shape[-2:]  # use Y, X no matter the prefix dims
 
     mask_mm = np.load(mask_path, mmap_mode="r")
     if mask_mm.shape != (height, width):
@@ -191,7 +195,7 @@ def overlay(
 
     try:
         import imagecodecs  # noqa: F401
-        compression = "jpeg"
+        compression = "deflate"  # Or "zstd", "lzma", "none" – all widely supported
     except ImportError:
         compression = "none"
 
