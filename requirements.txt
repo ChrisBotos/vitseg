@@ -15,6 +15,12 @@ numpy==2.2.0
 scipy==1.15.1
 pandas==2.3.0
 
+# CuPy binary wheel for CUDA 12.x
+cupy-cuda12x==13.5.0
+
+# Lock object used by CuPy
+fastrlock>=0.5
+
 # ---------- Arrow / parquet I/O ---------------------------------------------
 pyarrow==20.0.0            # 21.x not yet on PyPI for cp311; 20.0.0 is latest wheel.
 fastparquet==2024.2.0      # First 2024-series wheel that supports Py3.11.
