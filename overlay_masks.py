@@ -142,13 +142,17 @@ def overlay(
 
     lut = _generate_label_colours(int(mask_mm.max()), seed)
 
+    # Calculate estimated size in bytes: height * width * 3 (RGB) * 1 byte (uint8)
+    estimated_size = height * width * 3  # in bytes
+    use_bigtiff = estimated_size >= 4_000_000_000  # 4 GB threshold
+
     # Create an empty, contiguous BigTIFF mem-map for in-place writing.
     tiff.memmap(
         out_path,
         shape=(height, width, 3),
         dtype=np.uint8,
         photometric="rgb",
-        bigtiff=True,
+        bigtiff=use_bigtiff,
     )
 
     # Build the list of tile tasks.
@@ -202,7 +206,7 @@ def overlay(
     tiff.imwrite(
         tmp_path,
         repack_mm,
-        bigtiff=True,
+        bigtiff=use_bigtiff,
         tile=(tile, tile),
         compression=compression,
         photometric="rgb",
