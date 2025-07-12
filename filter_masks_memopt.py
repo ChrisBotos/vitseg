@@ -199,19 +199,34 @@ def violin_scatter(
 ) -> None:
     """
     Draw a split violin whose width is linearly proportional to the absolute
-    point count at each y-value, then overlay the individual observations as a
-    jittered scatter plot.  Threshold (lo / hi) guide lines are shown on both
-    halves of the figure.
+    point count at each y-value, overlay the raw observations, and annotate
+    threshold values together with how many observations fall outside them.
     """
 
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    # Violin outline. Width ∝ absolute counts (density_norm="count"). No fill colour.
+    # --------------------------------------------------------------------- #
+    # Basic statistics.                                                     #
+    # --------------------------------------------------------------------- #
+    n_total: int = len(data)
+    finite_lo: bool = np.isfinite(lo)
+    finite_hi: bool = np.isfinite(hi)
+
+    # Boolean mask of excluded observations.
+    excl_mask = (
+        (data < lo if finite_lo else False) |
+        (data > hi if finite_hi else False)
+    )
+    n_excluded: int = int(excl_mask.sum())
+
+    # --------------------------------------------------------------------- #
+    # Violin outline. Width ∝ absolute counts (density_norm="count").              #
+    # --------------------------------------------------------------------- #
     sns.violinplot(
         y=data,
         ax=ax,
-        inner=None,      # We handle raw points and summaries ourselves.
+        inner=None,      # We handle raw points ourselves.
         density_norm="count",   # Area – and therefore width – scales with N.
         cut=0,           # Do not extrapolate beyond the data range.
         fill=False,
@@ -219,10 +234,12 @@ def violin_scatter(
         color="black",
     )
 
-    # Scatter plot of all points on the right. Slight jitter avoids over-plotting.
+    # --------------------------------------------------------------------- #
+    # Scatter of individual observations.                                   #
+    # --------------------------------------------------------------------- #
     rng = np.random.default_rng(0)
     sc = ax.scatter(
-        rng.normal(1.0, 0.04, len(data)),
+        rng.normal(1.0, 0.04, n_total),   # Horizontal jitter.
         data,
         c=data,
         cmap="viridis",
@@ -231,17 +248,39 @@ def violin_scatter(
         alpha=0.85,
     )
 
-    # Threshold lines shown on both the violin (left) and the scatter (right).
-    ax.hlines([lo, hi], -0.25, 0.25, linestyles="--", colors="black")   # Left half.
-    ax.hlines([lo, hi],  0.75, 1.25, linestyles="--", colors="black")   # Right half.
+    # --------------------------------------------------------------------- #
+    # Threshold guide lines on both halves, plus numeric annotations.       #
+    # --------------------------------------------------------------------- #
+    if finite_lo:
+        ax.hlines(lo, -0.25, 0.25,  linestyles="--", colors="black", linewidth=0.9)
+        ax.hlines(lo,  0.75, 1.25,  linestyles="--", colors="black", linewidth=0.9)
+        ax.text(1.3, lo, f"min = {lo:.3g}", va="center", fontsize="x-small")
 
-    # Axis cosmetics.
-    ax.set_xlim(-0.25, 1.25)                # Ensure both halves are visible.
-    ax.set_xticks([1.0])                    # Label only the scatter column.
+    if finite_hi:
+        ax.hlines(hi, -0.25, 0.25,  linestyles="--", colors="black", linewidth=0.9)
+        ax.hlines(hi,  0.75, 1.25,  linestyles="--", colors="black", linewidth=0.9)
+        ax.text(1.3, hi, f"max = {hi:.3g}", va="center", fontsize="x-small")
+
+    # --------------------------------------------------------------------- #
+    # Axis cosmetics and meta-information.                                  #
+    # --------------------------------------------------------------------- #
+    ax.set_xlim(-0.25, 1.35)           # Extra space on the right for labels.
+    ax.set_xticks([1.0])
     ax.set_xticklabels([title])
     ax.set_ylabel(ylabel)
 
-    # Colour bar keyed to the data values.
+    # Annotation of sample size and exclusion count.
+    ax.text(
+        0.5,
+        1.02,
+        f"n = {n_total}   excluded = {n_excluded}",
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize="small",
+    )
+
+    # Colour bar keyed to data values.
     plt.colorbar(sc, ax=ax, fraction=0.046, pad=0.04, label=ylabel)
 
 
@@ -253,35 +292,35 @@ def save_violin_plots(
 ) -> None:
     """
     Generate violin–scatter plots for every bounded metric and save each figure
-    as both PDF and PNG under *out_dir*.  Absolute file paths are logged.
+    as both PDF and PNG in *out_dir*.  Full absolute file paths are logged.
     """
 
     import matplotlib.pyplot as plt
     import warnings
 
     plots = [
-        ("area",              th.min_pixels,        th.max_pixels,        "Pixel Count",      "Size"),
-        ("circularity",       th.min_circularity,   th.max_circularity,   "Circularity",      "Circularity"),
-        ("solidity",          th.min_solidity,      th.max_solidity,      "Solidity",         "Solidity"),
-        ("eccentricity",      th.min_eccentricity,  th.max_eccentricity,  "Eccentricity",     "Eccentricity"),
-        ("aspect_ratio",      th.min_aspect_ratio,  th.max_aspect_ratio,  "Aspect Ratio",     "Aspect Ratio"),
-        ("hole_fraction",     th.min_hole_fraction, th.max_hole_fraction, "Hole Fraction",    "Hole Fraction"),
+        ("area",              th.min_pixels,         th.max_pixels,         "Pixel Count",      "Size"),
+        ("circularity",       th.min_circularity,    th.max_circularity,    "Circularity",      "Circularity"),
+        ("solidity",          th.min_solidity,       th.max_solidity,       "Solidity",         "Solidity"),
+        ("eccentricity",      th.min_eccentricity,   th.max_eccentricity,   "Eccentricity",     "Eccentricity"),
+        ("aspect_ratio",      th.min_aspect_ratio,   th.max_aspect_ratio,   "Aspect Ratio",     "Aspect Ratio"),
+        ("hole_fraction",     th.min_hole_fraction,  th.max_hole_fraction,  "Hole Fraction",    "Hole Fraction"),
         ("straight_fraction", getattr(th, "min_straight_fraction", 0.0),
-                              getattr(th, "max_straight_fraction", 1.0),  "Straight Fraction","Straight Fraction"),
-        ("mean_intensity",    th.min_mean_intensity, th.max_mean_intensity, "Mean Intensity", "Mean Intensity"),
+                              getattr(th, "max_straight_fraction", 1.0),     "Straight Fraction","Straight Fraction"),
+        ("mean_intensity",    th.min_mean_intensity, th.max_mean_intensity, "Mean Intensity",   "Mean Intensity"),
     ]
 
     # Ensure the output directory exists.
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for col, lo, hi, ylabel, title in plots:
-        # Skip metrics that are missing or completely unbounded.
+        # Skip metrics that are absent or completely unbounded.
         if col not in df.columns or (np.isneginf(lo) and np.isposinf(hi)):
             continue
 
         fig, ax = plt.subplots(figsize=(4, 6), constrained_layout=True)
 
-        # Draw the violin–scatter combo.
+        # Draw the violin–scatter with annotations.
         violin_scatter(ax, df[col].values, lo, hi, ylabel, title)
 
         # Construct exact file paths.
@@ -297,8 +336,8 @@ def save_violin_plots(
                 module="numpy.linalg",
             )
             # Save as both vector (PDF) and high-resolution raster (PNG).
-            fig.savefig(pdf_path, format="pdf")    # e.g. /abs/path/out_dir/prefixarea_violin.pdf.
-            fig.savefig(png_path, dpi=300)         # e.g. /abs/path/out_dir/prefixarea_violin.png.
+            fig.savefig(pdf_path, format="pdf")    # Example: /abs/path/out_dir/prefixarea_violin.pdf.
+            fig.savefig(png_path, dpi=300)         # Example: /abs/path/out_dir/prefixarea_violin.png.
 
         plt.close(fig)
         LOGGER.info("Saved violin plot for %s (%s, %s).", col, pdf_path, png_path)
