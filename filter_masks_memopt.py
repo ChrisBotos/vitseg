@@ -197,34 +197,51 @@ def violin_scatter(
     ylabel: str,
     title: str,
 ) -> None:
-    """Draw a violin outline plus jittered scatter colored by value."""
+    """
+    Draw a split violin whose width is linearly proportional to the absolute
+    point count at each y-value, then overlay the individual observations as a
+    jittered scatter plot.  Threshold (lo / hi) guide lines are shown on both
+    halves of the figure.
+    """
 
     import matplotlib.pyplot as plt
+    import seaborn as sns
 
-    # Violin outline.
-    vp = ax.violinplot([data], positions=[1], showextrema=False)
-    for body in vp["bodies"]:
-        body.set_facecolor("none")
-        body.set_edgecolor("black")
+    # Violin outline. Width ∝ absolute counts (density_norm="count"). No fill colour.
+    sns.violinplot(
+        y=data,
+        ax=ax,
+        inner=None,      # We handle raw points and summaries ourselves.
+        density_norm="count",   # Area – and therefore width – scales with N.
+        cut=0,           # Do not extrapolate beyond the data range.
+        fill=False,
+        linewidth=1.2,
+        color="black",
+    )
 
-    # Jittered scatter with Viridis coloring.
+    # Scatter plot of all points on the right. Slight jitter avoids over-plotting.
     rng = np.random.default_rng(0)
     sc = ax.scatter(
-        rng.normal(1, 0.07, len(data)),
+        rng.normal(1.0, 0.04, len(data)),
         data,
         c=data,
         cmap="viridis",
-        s=10,
+        s=12,
         edgecolors="none",
+        alpha=0.85,
     )
 
-    # Threshold lines.
-    ax.hlines([lo, hi], 0.5, 1.5, linestyles="--", colors="black")
-    ax.set_xticks([1])
+    # Threshold lines shown on both the violin (left) and the scatter (right).
+    ax.hlines([lo, hi], -0.25, 0.25, linestyles="--", colors="black")   # Left half.
+    ax.hlines([lo, hi],  0.75, 1.25, linestyles="--", colors="black")   # Right half.
+
+    # Axis cosmetics.
+    ax.set_xlim(-0.25, 1.25)                # Ensure both halves are visible.
+    ax.set_xticks([1.0])                    # Label only the scatter column.
     ax.set_xticklabels([title])
     ax.set_ylabel(ylabel)
 
-    # Color bar.
+    # Colour bar keyed to the data values.
     plt.colorbar(sc, ax=ax, fraction=0.046, pad=0.04, label=ylabel)
 
 
@@ -234,31 +251,42 @@ def save_violin_plots(
     out_dir: Path,
     prefix: str,
 ) -> None:
-    """Generate and save violin-scatter plots for every bounded metric."""
+    """
+    Generate violin–scatter plots for every bounded metric and save each figure
+    as both PDF and PNG under *out_dir*.  Absolute file paths are logged.
+    """
 
     import matplotlib.pyplot as plt
+    import warnings
 
     plots = [
-        ("area",            th.min_pixels,         th.max_pixels,         "Pixel Count",    "Size"),
-        ("circularity",     th.min_circularity,    th.max_circularity,    "Circularity",    "Circularity"),
-        ("solidity",        th.min_solidity,       th.max_solidity,       "Solidity",       "Solidity"),
-        ("eccentricity",    th.min_eccentricity,   th.max_eccentricity,   "Eccentricity",   "Eccentricity"),
-        ("aspect_ratio",    th.min_aspect_ratio,   th.max_aspect_ratio,   "Aspect Ratio",   "Aspect Ratio"),
-        ("hole_fraction",   th.min_hole_fraction,  th.max_hole_fraction,  "Hole Fraction",  "Hole Fraction"),
+        ("area",              th.min_pixels,        th.max_pixels,        "Pixel Count",      "Size"),
+        ("circularity",       th.min_circularity,   th.max_circularity,   "Circularity",      "Circularity"),
+        ("solidity",          th.min_solidity,      th.max_solidity,      "Solidity",         "Solidity"),
+        ("eccentricity",      th.min_eccentricity,  th.max_eccentricity,  "Eccentricity",     "Eccentricity"),
+        ("aspect_ratio",      th.min_aspect_ratio,  th.max_aspect_ratio,  "Aspect Ratio",     "Aspect Ratio"),
+        ("hole_fraction",     th.min_hole_fraction, th.max_hole_fraction, "Hole Fraction",    "Hole Fraction"),
         ("straight_fraction", getattr(th, "min_straight_fraction", 0.0),
-                              getattr(th, "max_straight_fraction", 1.0),
-                                                            "Straight Fraction", "Straight Fraction"),
-        ("mean_intensity",  th.min_mean_intensity, th.max_mean_intensity, "Mean Intensity", "Mean Intensity"),
+                              getattr(th, "max_straight_fraction", 1.0),  "Straight Fraction","Straight Fraction"),
+        ("mean_intensity",    th.min_mean_intensity, th.max_mean_intensity, "Mean Intensity", "Mean Intensity"),
     ]
 
+    # Ensure the output directory exists.
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for col, lo, hi, ylabel, title in plots:
+        # Skip metrics that are missing or completely unbounded.
         if col not in df.columns or (np.isneginf(lo) and np.isposinf(hi)):
-            continue  # Skip missing or totally unbounded metrics.
+            continue
 
         fig, ax = plt.subplots(figsize=(4, 6), constrained_layout=True)
+
+        # Draw the violin–scatter combo.
         violin_scatter(ax, df[col].values, lo, hi, ylabel, title)
+
+        # Construct exact file paths.
+        pdf_path = (out_dir / f"{prefix}{col}_violin.pdf").resolve()
+        png_path = (out_dir / f"{prefix}{col}_violin.png").resolve()
 
         with warnings.catch_warnings():
             # Suppress the occasional NumPy det() warning triggered by constrained-layout.
@@ -268,10 +296,12 @@ def save_violin_plots(
                 message="invalid value encountered in det",
                 module="numpy.linalg",
             )
-            fig.savefig(out_dir / f"{prefix}{col}_violin.png", dpi=300)
+            # Save as both vector (PDF) and high-resolution raster (PNG).
+            fig.savefig(pdf_path, format="pdf")    # e.g. /abs/path/out_dir/prefixarea_violin.pdf.
+            fig.savefig(png_path, dpi=300)         # e.g. /abs/path/out_dir/prefixarea_violin.png.
 
         plt.close(fig)
-        LOGGER.info("Saved %s violin plot.", col)
+        LOGGER.info("Saved violin plot for %s (%s, %s).", col, pdf_path, png_path)
 
 
 ###############################################################################

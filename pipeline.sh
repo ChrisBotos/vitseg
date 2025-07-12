@@ -16,9 +16,9 @@ set -euo pipefail  # Fail on the first error, unset variable, or failed pipe.
 ###############################################################################
 # 1 ┃ User‑editable parameters.                                                .
 ###############################################################################
-IMAGE="img/IRI_regist.tif"                 # Original high‑resolution slide.
+IMAGE="img/IRI_regist_cropped.tif"                 # Original high‑resolution slide.
 BINARY_IMAGE="img/binary_mask.tif"         # 8‑bit binary mask (1 = nucleus).
-RAW_MASKS="segmentation_masks_whole.npy"   # Full segmentation map.
+RAW_MASKS="segmentation_masks.npy"   # Full segmentation map.
 
 # ViT patch sizes in pixels (smallest → largest).
 PATCH_SIZES=(16 32 64)
@@ -35,10 +35,10 @@ DOWNSAMPLE=1               # Down‑sampling factor for final overlays (>1 ⇒ s
 VIZ_BOX=(0.57 0.67 0.46 0.56)
 
 # Morphological thresholds.
-MIN_PIXELS=20 ; MAX_PIXELS=1000
-MIN_CIRC=0.60 ; MAX_CIRC=1.00
-MIN_SOL=0.75 ; MAX_SOL=1.00
-MIN_ECC=0.00 ; MAX_ECC=0.98
+MIN_PIXELS=20 ; MAX_PIXELS=900
+MIN_CIRC=0.62 ; MAX_CIRC=1.00
+MIN_SOL=0.765 ; MAX_SOL=1.00
+MIN_ECC=0.00 ; MAX_ECC=0.975
 MIN_AR=0.50 ; MAX_AR=3.20
 MIN_HOLE=0.00 ; MAX_HOLE=0.001
 
@@ -50,9 +50,9 @@ NO_STACK=true              # Disable stacking of overlays to save RAM.
 BASE_RAW="$(basename "${IMAGE%.*}")"        # → IRI_regist.
 BASE_BIN="$(basename "${BINARY_IMAGE%.*}")"  # → binary_mask.
 
-FILTER_DIR="whole_run"                       # QA filter outputs.
-PATCH_DIR="whole_run_20k_binary"              # ViT features and coords.
-CLUSTER_DIR="whole_run_20k_binary"            # Final clustering outputs.
+FILTER_DIR="new_test"                       # QA filter outputs.
+PATCH_DIR="new_test"              # ViT features and coordinates.
+CLUSTER_DIR="new_test"            # Final clustering outputs.
 
 # Feature and coordinate files derived from the *binary* stem.
 COORDS_CSV="${PATCH_DIR}/coords_${BASE_BIN}.csv"
@@ -83,54 +83,54 @@ python filter_masks_memopt.py \
     --region            "${VIZ_BOX[@]}" \
     ${NO_STACK:+--no_stack}
 
-########################################
-# 3.2 ┃ Convert mask set to binary TIFF.                                     .
-########################################
-printf '\n➤ Building binary mask image …\n'
-python segmentation_mask_to_binary_vit_input.py \
-       --mask   "${RAW_MASKS}" \
-       --output "${BINARY_IMAGE}"
-
-########################################
-# 3.3 ┃ Extract ViT patch embeddings.                                        .
-########################################
-printf '\n➤ Extracting Vision‑Transformer patch embeddings …\n'
-
-# Build repeated "--patch_sizes" arguments.
-PATCH_SIZE_ARGS=()
-for S in "${PATCH_SIZES[@]}"; do PATCH_SIZE_ARGS+=("$S"); done
-
-python segmentation_mask_dynamic_patches_vit.py \
-    --image            "${BINARY_IMAGE}" \
-    --mask             "${FILTER_DIR}/filtered_passed_labels.npy" \
-    --label_map        "${RAW_MASKS}" \
-    --output           "${PATCH_DIR}" \
-    --patch_sizes      "${PATCH_SIZE_ARGS[@]}" \
-    --workers          "${WORKERS}" \
-    --batch_size       "${BATCH_SIZE}" \
-    --name             "facebook/dino-vits16" \
-    --viz_crop_region  "${VIZ_BOX[@]}" \
-    --no_compile
-    # The default file stem ("${BASE_BIN}") is preserved so downstream stages
-    # read the correct feature files.
-
-########################################
-# 3.4 ┃ Cluster the embeddings.                                              .
-########################################
-printf '\n➤ Clustering patch embeddings …\n'
-python cluster_vit_patches_memopt.py \
-    --image         "${IMAGE}" \
-    --labels        "${FILTER_DIR}/filtered_passed_labels.npy" \
-    --label_map     "${RAW_MASKS}" \
-    --coords        "${COORDS_CSV}" \
-    --features_npy  "${FEATS_NPY}" \
-    --features_csv  "${FEATS_CSV}" \
-    --clusters      "${K_INIT}" \
-    --auto-k        "${AUTO_K}" \
-    --batch-size    "${CLUST_BATCH_SIZE}" \
-    --seed          "${SEED}" \
-    --outdir        "${CLUSTER_DIR}" \
-    --region        "${VIZ_BOX[@]}" \
-    --downsample    "${DOWNSAMPLE}"
-
-printf '\n✓ Pipeline completed successfully.\n'
+#########################################
+## 3.2 ┃ Convert mask set to binary TIFF.                                     .
+#########################################
+#printf '\n➤ Building binary mask image …\n'
+#python segmentation_mask_to_binary_vit_input.py \
+#       --mask   "${RAW_MASKS}" \
+#       --output "${BINARY_IMAGE}"
+#
+#########################################
+## 3.3 ┃ Extract ViT patch embeddings.                                        .
+#########################################
+#printf '\n➤ Extracting Vision‑Transformer patch embeddings …\n'
+#
+## Build repeated "--patch_sizes" arguments.
+#PATCH_SIZE_ARGS=()
+#for S in "${PATCH_SIZES[@]}"; do PATCH_SIZE_ARGS+=("$S"); done
+#
+#python segmentation_mask_dynamic_patches_vit.py \
+#    --image            "${BINARY_IMAGE}" \
+#    --mask             "${FILTER_DIR}/filtered_passed_labels.npy" \
+#    --label_map        "${RAW_MASKS}" \
+#    --output           "${PATCH_DIR}" \
+#    --patch_sizes      "${PATCH_SIZE_ARGS[@]}" \
+#    --workers          "${WORKERS}" \
+#    --batch_size       "${BATCH_SIZE}" \
+#    --model_name       "facebook/dino-vits16" \
+#    --viz_crop_region  "${VIZ_BOX[@]}" \
+#    --no_compile
+#     The default file stem BASE_BIN is preserved so downstream stages.
+#     read the correct feature files.
+#
+#########################################
+## 3.4 ┃ Cluster the embeddings.                                              .
+#########################################
+#printf '\n➤ Clustering patch embeddings …\n'
+#python cluster_vit_patches_memopt.py \
+#    --image         "${IMAGE}" \
+#    --labels        "${FILTER_DIR}/filtered_passed_labels.npy" \
+#    --label_map     "${RAW_MASKS}" \
+#    --coords        "${COORDS_CSV}" \
+#    --features_npy  "${FEATS_NPY}" \
+#    --features_csv  "${FEATS_CSV}" \
+#    --clusters      "${K_INIT}" \
+#    --auto-k        "${AUTO_K}" \
+#    --batch-size    "${CLUST_BATCH_SIZE}" \
+#    --seed          "${SEED}" \
+#    --outdir        "${CLUSTER_DIR}" \
+#    --region        0 1 0 1 \
+#    --downsample    "${DOWNSAMPLE}"
+#
+#printf '\n✓ Pipeline completed successfully.\n'

@@ -23,8 +23,8 @@ Description:
           upgraded to full sentences, and the logging name clarified.
 
 Dependencies:
-    • Python >= 3.10.
-    • numpy, pandas, torch >= 2.2, torchvision, transformers, scikit‑image, tqdm.
+    • Python>=3.10.
+    • numpy, pandas, torch>=2.2, torchvision, transformers, scikit‑image, tqdm.
 
 Usage:
     python segmentation_mask_dynamic_patches_vit_fixed.py \
@@ -95,7 +95,7 @@ def batched_crops(
     batch.
     """
     if size < 2:
-        raise ValueError("*size* must be at least 2 pixels.")
+        raise ValueError("*size* must be at least 2pixels.")
 
     n = centres.shape[0]
     _, H, W = img_tensor.shape
@@ -347,7 +347,7 @@ def extract_and_save_patches(
         np.save(output_dir / f"features_{image_path.stem}.npy", combined)
 
     LOGGER.info("Saved %d nuclei × %d‑D features.", combined.shape[0], combined.shape[1])
-    LOGGER.info("Total wall‑time %.1f s", time.perf_counter() - start_time)
+    LOGGER.info("Total wall‑time %.1fs", time.perf_counter() - start_time)
 
 # ---------------------------------------------------------------------------
 # CLI wrapper
