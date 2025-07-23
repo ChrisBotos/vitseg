@@ -87,7 +87,7 @@ python filter_masks_memopt.py \
 ## 3.2 ┃ Convert mask set to binary TIFF.                                     .
 #########################################
 #printf '\n➤ Building binary mask image …\n'
-#python segmentation_mask_to_binary_vit_input.py \
+#python white_segmentation_masks_on_black_background.py \
 #       --mask   "${RAW_MASKS}" \
 #       --output "${BINARY_IMAGE}"
 #

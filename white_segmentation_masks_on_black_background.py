@@ -2,7 +2,7 @@
 Affiliation: Leiden University Medical Center
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: segmentation_mask_to_binary_vit_input.py
+Script Name: white_segmentation_masks_on_black_background.py
 Description:
     Generate a binary mask image for ViT input where pixels inside any mask region
     are set to 1 and all other pixels to 0.
@@ -12,7 +12,7 @@ Dependencies:
     • numpy, pillow.
 
 Usage:
-    python segmentation_mask_to_binary_vit_input.py \
+    python white_segmentation_masks_on_black_background.py \
         --mask segmentation_masks.npy \
         --output img/binary_mask.tif
 
