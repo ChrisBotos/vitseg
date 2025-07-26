@@ -195,7 +195,7 @@ def main():
 
     # Initialize ViT processor and model from Hugging Face.
     processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224-in21k')
-    model = ViTModel.from_pretrained('google/vit-base-patch16-224-in21k')
+    model = ViTModel.from_pretrained('google/vit-base-patch16-224-in21k', output_hidden_states=True, use_safe_tensors=True).to(device).eval()
 
     # Run the extraction.
     extract_features(

@@ -221,7 +221,7 @@ def extract_and_save_patches(
     # 1. Build ViT
     # ------------------------------------------------------------------
     processor = ViTImageProcessor.from_pretrained(model_name)
-    model = ViTModel.from_pretrained(model_name, output_hidden_states=True).to(device).eval()
+    model = ViTModel.from_pretrained(model_name, output_hidden_states=True, use_safe_tensors=True).to(device).eval()
 
     if compile_model and hasattr(torch, "compile"):
         try:
