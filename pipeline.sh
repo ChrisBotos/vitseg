@@ -13,6 +13,9 @@
 
 set -euo pipefail  # Fail on the first error, unset variable, or failed pipe.
 
+# Activate virtual environment
+source venv311/bin/activate
+
 ###############################################################################
 # 1 ┃ Pipeline step control flags.                                            .
 ###############################################################################
@@ -26,9 +29,9 @@ set -euo pipefail  # Fail on the first error, unset variable, or failed pipe.
 #   • Run only filtering: Set only RUN_FILTER_MASKS=True.
 #   • Resume from ViT step: Set RUN_VIT_EXTRACTION=True and RUN_CLUSTERING=True.
 #
-RUN_FILTER_MASKS=True        # Step 3.1: Filter segmentation masks.
-RUN_BINARY_CONVERSION=True  # Step 3.2: Convert mask set to binary TIFF.
-RUN_VIT_EXTRACTION=True      # Step 3.3: Extract ViT patch embeddings.
+RUN_FILTER_MASKS=False       # Step 3.1: Filter segmentation masks.
+RUN_BINARY_CONVERSION=False  # Step 3.2: Convert mask set to binary TIFF.
+RUN_VIT_EXTRACTION=False      # Step 3.3: Extract ViT patch embeddings.
 RUN_CLUSTERING=True           # Step 3.4: Cluster the embeddings.
 
 ###############################################################################
@@ -41,7 +44,7 @@ RAW_MASKS="segmentation_masks.npy"   # Full segmentation map.
 # ViT patch sizes in pixels (smallest → largest).
 PATCH_SIZES=(16 32 64)
 
-K_INIT=20                  # Initial cluster count for k‑means.
+K_INIT=6                 # Initial cluster count for k‑means.
 AUTO_K="none"              # Auto‑k behaviour ("none", "silhouette", "dbi").
 BATCH_SIZE=2048            # GPU batch size for ViT embedding extraction.
 CLUST_BATCH_SIZE=10000     # Batch size for clustering stage.

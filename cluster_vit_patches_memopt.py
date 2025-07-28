@@ -284,21 +284,35 @@ def main():
         k = args.clusters
 
     # Generate high-contrast colors optimized for scientific visualization.
-    print(f"DEBUG: Generating color palette for {k} clusters")
+    print(f"DEBUG: Generating enhanced color palette for {k} clusters")
 
-    color_palette = generate_color_palette(
-        n=k,
-        alpha=200,   # (0 to 255) 0=transparent, 255=opaque. 50 is roughly 20% opacity.
-        background="dark",  # Dark background for high-contrast PCA plots.
-        saturation=0.95,    # High saturation for better distinction.
-        contrast_ratio=10, # High contrast for clear visibility.
-        hue_start=0.0      # Offset to avoid starting with red.
-    )
+    # Try to load color configuration if available.
+    try:
+        from color_config import load_color_config
+        color_config = load_color_config()
+        print("DEBUG: Using ColorConfig system for enhanced color generation")
+        color_palette = color_config.generate_palette(n=k)
+    except ImportError:
+        print("DEBUG: ColorConfig not available, using direct color generation")
+        color_palette = generate_color_palette(
+            n=k,
+            alpha=255,   # (0 to 255) 0=transparent, 255=opaque.
+            background="dark",  # Dark background for high-contrast PCA plots.
+            saturation=0.95,    # High saturation for better distinction.
+            contrast_ratio=10, # High contrast for clear visibility.
+            hue_start=0.0      # Offset to avoid starting with red.
+        )
 
     # Convert to hex format for matplotlib/seaborn compatibility.
     hex_colors = colors_to_hex_list(color_palette)
 
     print(f"DEBUG: Generated {len(color_palette)} RGBA colors and {len(hex_colors)} hex colors")
+
+    # Display first few colors for verification.
+    for i in range(min(3, len(color_palette))):
+        r, g, b, a = color_palette[i]
+        hex_color = hex_colors[i] if i < len(hex_colors) else "N/A"
+        print(f"DEBUG: Color {i}: RGB({r}, {g}, {b}) -> {hex_color}")
 
 
     logging.info(f'Clustering into {k} clusters...')

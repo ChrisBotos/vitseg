@@ -1,0 +1,37 @@
+{
+  "colors": {
+    "background": "dark",
+    "alpha": 200,
+    "saturation": 0.95,
+    "contrast_ratio": 5.0,
+    "hue_start": 0.0,
+    "custom_colors": [
+      "#FF0000",
+      "#00FF00", 
+      "#0080FF",
+      "#FF00FF",
+      "#FF8C00",
+      "#00FFFF",
+      "#FFFF00",
+      "#8000FF",
+      "#FF1493",
+      "#00FF7F",
+      "#FF4500",
+      "#8A2BE2"
+    ],
+    "use_predefined": true,
+    "max_predefined": 20,
+    "validate_contrast": true,
+    "fallback_to_algorithmic": true
+  },
+  "description": "Example color configuration for scientific visualization",
+  "notes": [
+    "Custom colors are specified as hex codes (#RRGGBB format)",
+    "Background should be 'dark' for microscopy images with dark backgrounds",
+    "Alpha controls transparency: 0=transparent, 255=opaque",
+    "Saturation: 0.0=grayscale, 1.0=fully saturated colors",
+    "Contrast ratio: higher values ensure better visibility (1.0-21.0)",
+    "When custom_colors are insufficient, system falls back to predefined vibrant colors",
+    "For more than 20 colors, algorithmic generation is used automatically"
+  ]
+}
