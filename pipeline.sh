@@ -59,30 +59,30 @@ COORDS_CSV="${PATCH_DIR}/coords_${BASE_BIN}.csv"
 FEATS_CSV="${PATCH_DIR}/features_${BASE_BIN}.csv"
 FEATS_NPY="${PATCH_DIR}/features_${BASE_BIN}.npy"
 
-###############################################################################
-# 3 ┃ Step‑wise pipeline.                                                     .
-###############################################################################
-
-########################################
-# 3.1 ┃ Filter segmentation masks.                                           .
-########################################
-printf '\n➤ Filtering segmentation masks …\n'
-python filter_masks_memopt.py \
-    --input             "${RAW_MASKS}" \
-    --results-dir       "${FILTER_DIR}" \
-    --output-prefix     "filtered_" \
-    --min-pixels        "${MIN_PIXELS}"       --max-pixels        "${MAX_PIXELS}" \
-    --min-circularity   "${MIN_CIRC}"         --max-circularity   "${MAX_CIRC}" \
-    --min-solidity      "${MIN_SOL}"          --max-solidity      "${MAX_SOL}" \
-    --min-eccentricity  "${MIN_ECC}"         --max-eccentricity  "${MAX_ECC}" \
-    --min-aspect-ratio  "${MIN_AR}"           --max-aspect-ratio  "${MAX_AR}"  \
-    --min-hole-fraction "${MIN_HOLE}"        --max-hole-fraction "${MAX_HOLE}" \
-    --summary-csv \
-    --raw-image         "${IMAGE}" \
-    --overlay \
-    --region            "${VIZ_BOX[@]}" \
-    ${NO_STACK:+--no_stack}
-
+################################################################################
+## 3 ┃ Step‑wise pipeline.                                                     .
+################################################################################
+#
+#########################################
+## 3.1 ┃ Filter segmentation masks.                                           .
+#########################################
+#printf '\n➤ Filtering segmentation masks …\n'
+#python filter_masks_memopt.py \
+#    --input             "${RAW_MASKS}" \
+#    --results-dir       "${FILTER_DIR}" \
+#    --output-prefix     "filtered_" \
+#    --min-pixels        "${MIN_PIXELS}"       --max-pixels        "${MAX_PIXELS}" \
+#    --min-circularity   "${MIN_CIRC}"         --max-circularity   "${MAX_CIRC}" \
+#    --min-solidity      "${MIN_SOL}"          --max-solidity      "${MAX_SOL}" \
+#    --min-eccentricity  "${MIN_ECC}"         --max-eccentricity  "${MAX_ECC}" \
+#    --min-aspect-ratio  "${MIN_AR}"           --max-aspect-ratio  "${MAX_AR}"  \
+#    --min-hole-fraction "${MIN_HOLE}"        --max-hole-fraction "${MAX_HOLE}" \
+#    --summary-csv \
+#    --raw-image         "${IMAGE}" \
+#    --overlay \
+#    --region            "${VIZ_BOX[@]}" \
+#    ${NO_STACK:+--no_stack}
+#
 #########################################
 ## 3.2 ┃ Convert mask set to binary TIFF.                                     .
 #########################################
@@ -111,26 +111,24 @@ python filter_masks_memopt.py \
 #    --model_name       "facebook/dino-vits16" \
 #    --viz_crop_region  "${VIZ_BOX[@]}" \
 #    --no_compile
-#     The default file stem BASE_BIN is preserved so downstream stages.
-#     read the correct feature files.
-#
-#########################################
-## 3.4 ┃ Cluster the embeddings.                                              .
-#########################################
-#printf '\n➤ Clustering patch embeddings …\n'
-#python cluster_vit_patches_memopt.py \
-#    --image         "${IMAGE}" \
-#    --labels        "${FILTER_DIR}/filtered_passed_labels.npy" \
-#    --label_map     "${RAW_MASKS}" \
-#    --coords        "${COORDS_CSV}" \
-#    --features_npy  "${FEATS_NPY}" \
-#    --features_csv  "${FEATS_CSV}" \
-#    --clusters      "${K_INIT}" \
-#    --auto-k        "${AUTO_K}" \
-#    --batch-size    "${CLUST_BATCH_SIZE}" \
-#    --seed          "${SEED}" \
-#    --outdir        "${CLUSTER_DIR}" \
-#    --region        0 1 0 1 \
-#    --downsample    "${DOWNSAMPLE}"
-#
-#printf '\n✓ Pipeline completed successfully.\n'
+
+########################################
+# 3.4 ┃ Cluster the embeddings.                                              .
+########################################
+printf '\n➤ Clustering patch embeddings …\n'
+python cluster_vit_patches_memopt.py \
+    --image         "${IMAGE}" \
+    --labels        "${FILTER_DIR}/filtered_passed_labels.npy" \
+    --label_map     "${RAW_MASKS}" \
+    --coords        "${COORDS_CSV}" \
+    --features_npy  "${FEATS_NPY}" \
+    --features_csv  "${FEATS_CSV}" \
+    --clusters      "${K_INIT}" \
+    --auto-k        "${AUTO_K}" \
+    --batch-size    "${CLUST_BATCH_SIZE}" \
+    --seed          "${SEED}" \
+    --outdir        "${CLUSTER_DIR}" \
+    --region        0 1 0 1 \
+    --downsample    "${DOWNSAMPLE}"
+
+printf '\n✓ Pipeline completed successfully.\n'

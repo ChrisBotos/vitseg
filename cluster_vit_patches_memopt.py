@@ -54,7 +54,9 @@ Outputs:
 import argparse
 import logging
 import sys
+import traceback
 from pathlib import Path
+from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -67,6 +69,8 @@ import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
 import random
+
+from generate_contrast_colors import generate_color_palette, colors_to_hex_list
 
 """Compute slicing indices from fractional region specification."""
 def _slice_region(height: int, width: int, region: tuple[float, float, float, float]) -> tuple[int, int, int, int]:
@@ -86,11 +90,14 @@ def _build_lut(max_label: int, labels: np.ndarray, cluster_ids: np.ndarray) -> n
     """
     Create a lookup table (LUT) of size max_label+1 mapping original labels to cluster index+1.
     Entry 0 remains 0 (transparent background).
+    Maps cluster 0->1, cluster 1->2, etc. for proper color indexing.
     """
     lut = np.zeros(max_label + 1, dtype=np.int32)
+
     for lab, cid in zip(labels, cluster_ids):
         if 0 <= lab <= max_label:
-            lut[int(lab)] = int(cid) + 1
+            lut[int(lab)] = int(cid) + 1  # Map cluster 0->1, cluster 1->2, etc.
+
     return lut
 
 ''' Configure root logger '''
@@ -114,27 +121,61 @@ def compute_label_cluster_map(label_map, passed_labels, coords_df, cluster_ids):
 
 ''' Save RGBA overlay of clusters on the image '''
 def save_overlay(img_path: Path, seg_map_path: Path, passed_labels: np.ndarray, cluster_ids: np.ndarray,
-                palette, region, out_path: Path, alpha: float = 0.35, down: int = 1) -> None:
-    """Write an RGBA overlay without materialising full‑frame masks."""
+                color_palette: Dict[int, Tuple[int, int, int, int]], region, out_path: Path, down: int = 1) -> None:
+    """
+    Create RGBA overlay of cluster colors on microscopy image.
+
+    Parameters:
+        img_path: Path to base microscopy image.
+        seg_map_path: Path to segmentation mask array.
+        passed_labels: Array of cell labels that passed filtering.
+        cluster_ids: Array of cluster assignments for each label.
+        color_palette: Dictionary mapping cluster index to RGBA color.
+        region: Crop region as (xmin, xmax, ymin, ymax) fractions.
+        out_path: Output path for overlay image.
+        down: Downsampling factor for memory efficiency.
+    """
+    print(f"DEBUG: Creating overlay with {len(color_palette)} colors")
+    print(f"DEBUG: Region: {region}, downsample: {down}")
+
+    # Load and crop base image.
     base_full = Image.open(img_path).convert('RGBA')
     w, h = base_full.size
     x0, x1, y0, y1 = _slice_region(h, w, region)
     base_crop = base_full.crop((x0, y0, x1, y1))
+
+    # Load and crop segmentation mask.
     seg = np.load(seg_map_path, mmap_mode='r')[y0:y1, x0:x1]
+
     if down > 1:
         seg = seg[::down, ::down]
         base_crop = base_crop.resize((seg.shape[1], seg.shape[0]), Image.BILINEAR)
+
+    # Create lookup table mapping labels to cluster colors.
     lut = _build_lut(int(seg.max()), passed_labels, cluster_ids)
     cluster_map = lut[seg]
-    k = len(palette)
-    rgba = np.zeros((k + 1, 4), dtype=np.uint8)
-    for idx, (r, g, b) in enumerate(palette, start=1):
-        rgba[idx, :3] = (r, g, b)
-        rgba[idx, 3] = int(alpha * 255)
-    overlay = Image.fromarray(rgba[cluster_map], mode='RGBA')
+
+    # Build RGBA color array with background as transparent.
+    k = len(color_palette)
+    rgba_array = np.zeros((k + 1, 4), dtype=np.uint8)  # +1 for background (index 0).
+
+    # Populate color array with palette colors.
+    # cluster_map uses 1-based indexing (0=background, 1=cluster0, 2=cluster1, etc.)
+    for cluster_idx, (r, g, b, a) in color_palette.items():
+        array_idx = cluster_idx + 1  # Map cluster 0->index 1, cluster 1->index 2, etc.
+        if array_idx < len(rgba_array):
+            rgba_array[array_idx] = [r, g, b, a]
+
+    # Create overlay image using cluster map as indices.
+    overlay_data = rgba_array[cluster_map]
+    overlay = Image.fromarray(overlay_data, mode='RGBA')
+
+    # Composite overlay onto base image.
     composite = Image.alpha_composite(base_crop, overlay)
     composite.save(out_path)
-    logging.info('Overlay saved → %s', out_path)
+
+    logging.info(f'Overlay saved with {np.sum(cluster_map > 0)} colored pixels → {out_path}')
+    print(f"DEBUG: Overlay dimensions: {composite.size}, unique clusters: {len(np.unique(cluster_map[cluster_map > 0]))}")
 
 ''' Choose optimal K via silhouette or Davies-Bouldin '''
 def choose_optimal_k(features, k_max, criterion, sample_size=5000):
@@ -242,11 +283,23 @@ def main():
     else:
         k = args.clusters
 
-    raw_palette = sns.color_palette('hsv', k)               # floats in [0,1]
-    overlay_palette = [                                    # ints in [0,255]
-        (int(r*255), int(g*255), int(b*255))
-        for r, g, b in raw_palette
-    ]
+    # Generate high-contrast colors optimized for scientific visualization.
+    print(f"DEBUG: Generating color palette for {k} clusters")
+
+    color_palette = generate_color_palette(
+        n=k,
+        alpha=89,   # More transparent for better overlay visibility (0.35 * 255).
+        background="dark",  # Dark background for high-contrast PCA plots.
+        saturation=0.85,    # High saturation for better distinction.
+        contrast_ratio=4.5, # High contrast for clear visibility.
+        hue_start=0.07      # Offset to avoid starting with red.
+    )
+
+    # Convert to hex format for matplotlib/seaborn compatibility.
+    hex_colors = colors_to_hex_list(color_palette)
+
+    print(f"DEBUG: Generated {len(color_palette)} RGBA colors and {len(hex_colors)} hex colors")
+
 
     logging.info(f'Clustering into {k} clusters...')
     kmeans = cluster_streaming(scaled, args.batch_size, k, args.seed)
@@ -265,17 +318,59 @@ def main():
     logging.info('Plotting PCA scatter...')
     sample_idx = np.random.RandomState(args.seed).choice(n, min(5000, n), replace=False)
     pcs = PCA(2).fit_transform(scaled[sample_idx])
-    plt.figure()
-    sns.scatterplot(x=pcs[:,0], y=pcs[:,1], hue=labels[sample_idx], palette=raw_palette, legend=False)
-    plt.title('PCA of patch clusters')
-    plt.savefig(args.outdir/'pca_clusters.png')
-    logging.info('PCA plot saved.')
+
+    # Create high-resolution PCA plot with dark background.
+    plt.figure(figsize=(12, 10))
+    plt.style.use('dark_background')
+
+    # Use hex colors for seaborn compatibility.
+    sns.scatterplot(x=pcs[:,0], y=pcs[:,1], hue=labels[sample_idx],
+                   palette=hex_colors, legend=True, s=80, alpha=0.8,
+                   edgecolor='black', linewidth=0.3)
+
+    # High-quality text with better visibility.
+    plt.title('PCA Visualization of Patch Clusters', fontsize=20, fontweight='bold',
+              color='white', pad=25)
+    plt.xlabel('First Principal Component', fontsize=16, color='white', fontweight='bold')
+    plt.ylabel('Second Principal Component', fontsize=16, color='white', fontweight='bold')
+
+    # Improve tick labels.
+    plt.xticks(fontsize=14, color='white', fontweight='bold')
+    plt.yticks(fontsize=14, color='white', fontweight='bold')
+
+    # Enhanced legend with better visibility.
+    legend = plt.legend(title='Cluster', bbox_to_anchor=(1.02, 1), loc='upper left',
+                       frameon=True, fancybox=True, shadow=True,
+                       facecolor='black', edgecolor='white', fontsize=12)
+    legend.get_title().set_color('white')
+    legend.get_title().set_fontweight('bold')
+    legend.get_title().set_fontsize(14)
+
+    for text in legend.get_texts():
+        text.set_color('white')
+        text.set_fontweight('bold')
+
+    # Subtle grid for better readability.
+    plt.grid(True, alpha=0.2, linestyle='-', linewidth=0.5, color='gray')
+
+    plt.tight_layout()
+    plt.savefig(args.outdir/'pca_clusters.png', dpi=400, bbox_inches='tight',
+                facecolor='black', edgecolor='none')
+    plt.close()
+
+    logging.info(f'PCA plot saved with {len(hex_colors)} distinct colors.')
+    print(f"DEBUG: PCA plot uses {len(np.unique(labels[sample_idx]))} unique cluster labels")
 
     logging.info('Creating overlay…')
     passed = np.load(args.labels)
-    save_overlay(args.image, args.label_map, passed, labels, overlay_palette,
+
+    print(f"DEBUG: Creating overlay for {len(passed)} passed labels with {len(color_palette)} cluster colors")
+
+    save_overlay(args.image, args.label_map, passed, labels, color_palette,
                 region=args.region, out_path=args.outdir / 'overlay_clusters.tif',
-                alpha=0.35, down=args.downsample)
+                down=args.downsample)
+
+    print("DEBUG: Overlay creation completed successfully")
 
 if __name__ == '__main__':
     main()
