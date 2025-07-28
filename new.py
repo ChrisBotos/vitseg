@@ -111,7 +111,7 @@ def extract_and_save_patches(
     sizes = sorted(set(sizes))
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    os.environ["TOKENIZERS_PARALLELISM"] = "False"
 
     processor = ViTImageProcessor.from_pretrained(model_name)
     model = ViTModel.from_pretrained(model_name, output_hidden_states=True).to(device).eval()

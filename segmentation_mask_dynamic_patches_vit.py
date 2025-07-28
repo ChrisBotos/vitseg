@@ -215,7 +215,7 @@ def extract_and_save_patches(
 
     sizes: List[int] = sorted(set(patch_sizes or [patch_size]))
     output_dir.mkdir(parents=True, exist_ok=True)
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    os.environ["TOKENIZERS_PARALLELISM"] = "False"
 
     # ------------------------------------------------------------------
     # 1. Build ViT

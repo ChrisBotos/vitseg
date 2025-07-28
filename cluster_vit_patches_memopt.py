@@ -288,11 +288,11 @@ def main():
 
     color_palette = generate_color_palette(
         n=k,
-        alpha=89,   # More transparent for better overlay visibility (0.35 * 255).
+        alpha=200,   # (0 to 255) 0=transparent, 255=opaque. 50 is roughly 20% opacity.
         background="dark",  # Dark background for high-contrast PCA plots.
-        saturation=0.85,    # High saturation for better distinction.
-        contrast_ratio=4.5, # High contrast for clear visibility.
-        hue_start=0.07      # Offset to avoid starting with red.
+        saturation=0.95,    # High saturation for better distinction.
+        contrast_ratio=10, # High contrast for clear visibility.
+        hue_start=0.0      # Offset to avoid starting with red.
     )
 
     # Convert to hex format for matplotlib/seaborn compatibility.
