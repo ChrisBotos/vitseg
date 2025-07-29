@@ -34,18 +34,18 @@ RUN_CLUSTERING=True           # Step 3.4: Cluster the embeddings.
 ###############################################################################
 # 2 ┃ User‑editable parameters.                                                .
 ###############################################################################
-IMAGE="img/IRI_regist_cropped.tif"                 # Original high‑resolution slide.
-BINARY_IMAGE="img/binary_mask.tif"         # 8‑bit binary mask (1 = nucleus).
-RAW_MASKS="segmentation_masks.npy"   # Full segmentation map.
+IMAGE="img/ss_bIRI2.tif"                # Original high‑resolution slide.
+BINARY_IMAGE="img/ss_bIRI2_binary_mask.tif"         # 8‑bit binary mask (1 = nucleus).
+RAW_MASKS="segmentation_masks_ss_bIRI2.npy"   # Full segmentation map.
 
 # ViT patch sizes in pixels (smallest → largest).
 PATCH_SIZES=(16 32 64)
 
-K_INIT=6                 # Initial cluster count for k‑means.
+K_INIT=10                 # Initial cluster count for k‑means.
 AUTO_K="none"              # Auto‑k behaviour ("none", "silhouette", "dbi").
 BATCH_SIZE=2048            # GPU batch size for ViT embedding extraction.
 CLUST_BATCH_SIZE=10000     # Batch size for clustering stage.
-WORKERS=8                  # Python multiprocess workers.
+WORKERS=4                  # Python multiprocess workers.
 SEED=0                     # Random seed for reproducibility.
 DOWNSAMPLE=1               # Down‑sampling factor for final overlays (>1 ⇒ subsample).
 
@@ -54,7 +54,7 @@ VIZ_BOX=(0.57 0.67 0.46 0.56)
 
 # Morphological thresholds.
 MIN_PIXELS=20 ; MAX_PIXELS=900
-MIN_CIRC=0.62 ; MAX_CIRC=1.00
+MIN_CIRC=0.56 ; MAX_CIRC=1.00
 MIN_SOL=0.765 ; MAX_SOL=1.00
 MIN_ECC=0.00 ; MAX_ECC=0.975
 MIN_AR=0.50 ; MAX_AR=3.20
@@ -68,9 +68,9 @@ NO_STACK=True              # Disable stacking of overlays to save RAM.
 BASE_RAW="$(basename "${IMAGE%.*}")"        # → IRI_regist.
 BASE_BIN="$(basename "${BINARY_IMAGE%.*}")"  # → binary_mask.
 
-FILTER_DIR="newest_test"                       # QA filter outputs.
-PATCH_DIR="newest_test"              # ViT features and coordinates.
-CLUSTER_DIR="newest_test"            # Final clustering outputs.
+FILTER_DIR="ss_bIRI2_10k"                       # QA filter outputs.
+PATCH_DIR="ss_bIRI2_10k"              # ViT features and coordinates.
+CLUSTER_DIR="ss_bIRI2_10k"            # Final clustering outputs.
 
 # Feature and coordinate files derived from the *binary* stem.
 COORDS_CSV="${PATCH_DIR}/coords_${BASE_BIN}.csv"
