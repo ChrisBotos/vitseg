@@ -13,9 +13,6 @@
 
 set -euo pipefail  # Fail on the first error, unset variable, or failed pipe.
 
-# Activate virtual environment
-source venv311/bin/activate
-
 ###############################################################################
 # 1 ┃ Pipeline step control flags.                                            .
 ###############################################################################
