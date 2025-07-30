@@ -13,8 +13,8 @@ Dependencies:
 
 Usage:
     python white_segmentation_masks_on_black_background.py \
-        --mask segmentation_masks.npy \
-        --output img/binary_mask.tif
+        --mask ss_bIRI2_clear_segmentation_masks.npy \
+        --output "img/ss_bIRI2 - Outside cleared.tif"
 
 Positional Arguments:
     None.

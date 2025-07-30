@@ -36,7 +36,7 @@ RUN_CLUSTERING=True           # Step 3.4: Cluster the embeddings.
 ###############################################################################
 IMAGE="img/ss_bIRI2.tif"                # Original high‑resolution slide.
 BINARY_IMAGE="img/ss_bIRI2_binary_mask.tif"         # 8‑bit binary mask (1 = nucleus).
-RAW_MASKS="segmentation_masks_ss_bIRI2.npy"   # Full segmentation map.
+RAW_MASKS="ss_bIRI2_clear_segmentation_masks.npy"   # Full segmentation map.
 
 # ViT patch sizes in pixels (smallest → largest).
 PATCH_SIZES=(16 32 64)
