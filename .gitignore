@@ -8,3 +8,5 @@
 
 /img/*
 !/img/.gitkeep
+
+ss_bIRI2_clear_segmentation_masks.npy

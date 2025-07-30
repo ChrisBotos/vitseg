@@ -3,13 +3,16 @@
 # Author: Christos Botos.
 # Script Name: pipeline_region_support.sh.
 # Description: End‑to‑end nuclei‑clustering pipeline with region support and
-#              deterministic file naming.
+#              deterministic file naming. Supports both dynamic patch extraction
+#              around individual nuclei and uniform tiling across entire images.
 #              • Uses X‑first VIZ_BOX coordinates (xmin xmax ymin ymax).
 #              • Feeds the same ROI to every Python stage so visual and numeric
 #                outputs match perfectly.
 #              • Works on a binary mask image but preserves its own stem when
 #                handing feature files to the clustering stage, avoiding any
 #                stem mismatch errors.
+#              • Dynamic patches: Extracts patches around filtered nuclei masks.
+#              • Uniform tiling: Splits entire binary image into regular tiles.
 
 set -euo pipefail  # Fail on the first error, unset variable, or failed pipe.
 
@@ -28,18 +31,38 @@ set -euo pipefail  # Fail on the first error, unset variable, or failed pipe.
 #
 RUN_FILTER_MASKS=False       # Step 3.1: Filter segmentation masks.
 RUN_BINARY_CONVERSION=False  # Step 3.2: Convert mask set to binary TIFF.
-RUN_VIT_EXTRACTION=False      # Step 3.3: Extract ViT patch embeddings.
-RUN_CLUSTERING=True           # Step 3.4: Cluster the embeddings.
+RUN_VIT_EXTRACTION=True      # Step 3.3: Extract ViT patch embeddings.
+RUN_CLUSTERING=True          # Step 3.4: Cluster the embeddings.
+
+# ViT extraction method selection.
+# Set to True for dynamic patches around masks (current behavior).
+# Set to False for uniform tiling across the entire binary image.
+#
+# Dynamic patches (True):
+#   • Extracts patches centered on filtered nuclei masks.
+#   • Uses segmentation_mask_dynamic_patches_vit.py.
+#   • Requires filtered masks and segmentation maps.
+#   • Ideal for individual cell morphology analysis.
+#
+# Uniform tiling (False):
+#   • Splits entire binary image into regular grid tiles.
+#   • Uses uniform_tiling_vit.py.
+#   • Works directly with binary mask images.
+#   • Ideal for tissue architecture and spatial pattern analysis.
+#
+USE_DYNAMIC_PATCHES=False     # True: dynamic patches, False: uniform tiling.
 
 ###############################################################################
 # 2 ┃ User‑editable parameters.                                                .
 ###############################################################################
-IMAGE="img/ss_bIRI2.tif"                # Original high‑resolution slide.
-BINARY_IMAGE="img/ss_bIRI2_binary_mask.tif"         # 8‑bit binary mask (1 = nucleus).
-RAW_MASKS="ss_bIRI2_clear_segmentation_masks.npy"   # Full segmentation map.
+IMAGE="img/IRI_regist_cropped.tif"                # Original high‑resolution slide.
+BINARY_IMAGE="img/binary_IRI_regist_cropped.tif"         # 8‑bit binary mask (1 = nucleus).
+RAW_MASKS="segmentation_masks.npy"   # Full segmentation map.
 
-# ViT patch sizes in pixels (smallest → largest).
-PATCH_SIZES=(16 32 64)
+# ViT patch sizes in pixels for multi-scale analysis.
+# Multiple sizes capture different spatial patterns: fine details → tissue architecture.
+# Recommended: 32 (cell details), 64 (local patterns), 128 (tissue regions).
+PATCH_SIZES=(32 64)
 
 K_INIT=10                 # Initial cluster count for k‑means.
 AUTO_K="none"              # Auto‑k behaviour ("none", "silhouette", "dbi").
@@ -68,9 +91,9 @@ NO_STACK=True              # Disable stacking of overlays to save RAM.
 BASE_RAW="$(basename "${IMAGE%.*}")"        # → IRI_regist.
 BASE_BIN="$(basename "${BINARY_IMAGE%.*}")"  # → binary_mask.
 
-FILTER_DIR="ss_bIRI2_10k"                       # QA filter outputs.
-PATCH_DIR="ss_bIRI2_10k"              # ViT features and coordinates.
-CLUSTER_DIR="ss_bIRI2_10k"            # Final clustering outputs.
+FILTER_DIR="IRI_regist_cropped_uniform_10k_ps4"                       # QA filter outputs.
+PATCH_DIR="IRI_regist_cropped_uniform_10k_ps4"              # ViT features and coordinates.
+CLUSTER_DIR="IRI_regist_cropped_uniform_10k_ps4"            # Final clustering outputs.
 
 # Feature and coordinate files derived from the *binary* stem.
 COORDS_CSV="${PATCH_DIR}/coords_${BASE_BIN}.csv"
@@ -121,23 +144,47 @@ fi
 # 3.3 ┃ Extract ViT patch embeddings.                                        .
 ########################################
 if [[ "${RUN_VIT_EXTRACTION}" == "True" ]]; then
-    printf '\n➤ Extracting Vision‑Transformer patch embeddings …\n'
+    if [[ "${USE_DYNAMIC_PATCHES}" == "True" ]]; then
+        printf '\n➤ Extracting Vision‑Transformer patch embeddings (dynamic patches) …\n'
 
-    # Build repeated "--patch_sizes" arguments.
-    PATCH_SIZE_ARGS=()
-    for S in "${PATCH_SIZES[@]}"; do PATCH_SIZE_ARGS+=("$S"); done
+        # Build repeated "--patch_sizes" arguments.
+        PATCH_SIZE_ARGS=()
+        for S in "${PATCH_SIZES[@]}"; do PATCH_SIZE_ARGS+=("$S"); done
 
-    python segmentation_mask_dynamic_patches_vit.py \
-        --image            "${BINARY_IMAGE}" \
-        --mask             "${FILTER_DIR}/filtered_passed_labels.npy" \
-        --label_map        "${RAW_MASKS}" \
-        --output           "${PATCH_DIR}" \
-        --patch_sizes      "${PATCH_SIZE_ARGS[@]}" \
-        --workers          "${WORKERS}" \
-        --batch_size       "${BATCH_SIZE}" \
-        --model_name       "facebook/dino-vits16" \
-        --viz_crop_region  "${VIZ_BOX[@]}" \
-        --no_compile
+        python segmentation_mask_dynamic_patches_vit.py \
+            --image            "${BINARY_IMAGE}" \
+            --mask             "${FILTER_DIR}/filtered_passed_labels.npy" \
+            --label_map        "${RAW_MASKS}" \
+            --output           "${PATCH_DIR}" \
+            --patch_sizes      "${PATCH_SIZE_ARGS[@]}" \
+            --workers          "${WORKERS}" \
+            --batch_size       "${BATCH_SIZE}" \
+            --model_name       "facebook/dino-vits16" \
+            --viz_crop_region  "${VIZ_BOX[@]}" \
+            --no_compile
+    else
+        printf '\n➤ Extracting Vision‑Transformer patch embeddings (uniform tiling) …\n'
+
+        # Use the first patch size for uniform tiling (can be extended for multi-scale).
+        UNIFORM_PATCH_SIZE="${PATCH_SIZES[0]}"
+
+        # Use smaller batch size for uniform tiling to handle large numbers of tiles.
+        UNIFORM_BATCH_SIZE=$((BATCH_SIZE / 4))
+        if [[ ${UNIFORM_BATCH_SIZE} -lt 256 ]]; then
+            UNIFORM_BATCH_SIZE=256
+        fi
+
+        python uniform_tiling_vit.py \
+            --image            "${BINARY_IMAGE}" \
+            --output           "${PATCH_DIR}" \
+            --patch_sizes      "${PATCH_SIZES[@]}" \
+            --stride           "${UNIFORM_PATCH_SIZE}" \
+            --batch_size       "${UNIFORM_BATCH_SIZE}" \
+            --model_name       "facebook/dino-vits16" \
+            --workers          1 \
+            --enhance_binary \
+            --fusion_method    concatenate
+    fi
 else
     printf '\n⏭ Skipping ViT extraction step (RUN_VIT_EXTRACTION=False)\n'
 fi
@@ -147,20 +194,38 @@ fi
 ########################################
 if [[ "${RUN_CLUSTERING}" == "True" ]]; then
     printf '\n➤ Clustering patch embeddings …\n'
-    python cluster_vit_patches_memopt.py \
-        --image         "${IMAGE}" \
-        --labels        "${FILTER_DIR}/filtered_passed_labels.npy" \
-        --label_map     "${RAW_MASKS}" \
-        --coords        "${COORDS_CSV}" \
-        --features_npy  "${FEATS_NPY}" \
-        --features_csv  "${FEATS_CSV}" \
-        --clusters      "${K_INIT}" \
-        --auto-k        "${AUTO_K}" \
-        --batch-size    "${CLUST_BATCH_SIZE}" \
-        --seed          "${SEED}" \
-        --outdir        "${CLUSTER_DIR}" \
-        --region        0 1 0 1 \
-        --downsample    "${DOWNSAMPLE}"
+
+    if [[ "${USE_DYNAMIC_PATCHES}" == "True" ]]; then
+        # Dynamic patches clustering (uses filtered labels and segmentation masks).
+        python cluster_vit_patches_memopt.py \
+            --image         "${IMAGE}" \
+            --labels        "${FILTER_DIR}/filtered_passed_labels.npy" \
+            --label_map     "${RAW_MASKS}" \
+            --coords        "${COORDS_CSV}" \
+            --features_npy  "${FEATS_NPY}" \
+            --features_csv  "${FEATS_CSV}" \
+            --clusters      "${K_INIT}" \
+            --auto-k        "${AUTO_K}" \
+            --batch-size    "${CLUST_BATCH_SIZE}" \
+            --seed          "${SEED}" \
+            --outdir        "${CLUSTER_DIR}" \
+            --region        0 1 0 1 \
+            --downsample    "${DOWNSAMPLE}"
+    else
+        # Uniform tiling clustering (uses tile coordinates directly).
+        python cluster_uniform_tiles_memopt.py \
+            --image         "${BINARY_IMAGE}" \
+            --coords        "${COORDS_CSV}" \
+            --features_npy  "${FEATS_NPY}" \
+            --features_csv  "${FEATS_CSV}" \
+            --clusters      "${K_INIT}" \
+            --auto-k        "${AUTO_K}" \
+            --batch-size    "${CLUST_BATCH_SIZE}" \
+            --seed          "${SEED}" \
+            --outdir        "${CLUSTER_DIR}" \
+            --region        0 1 0 1 \
+            --downsample    "${DOWNSAMPLE}"
+    fi
 else
     printf '\n⏭ Skipping clustering step (RUN_CLUSTERING=False)\n'
 fi
