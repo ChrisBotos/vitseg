@@ -1,5 +1,5 @@
 ###############################################################################
-# requirements.txt  –  compatible with Python 3.11
+# requirements.txt  –  compatible with Python 3.10
 # Tested with pip 24.0 on 16 Jun 2025
 #
 # GPU build (CUDA 12.1):
@@ -29,7 +29,7 @@ fastparquet==2024.2.0      # First 2024-series wheel that supports Py3.11.
 matplotlib==3.10.3
 contourpy==1.1.0
 pillow==11.2.1
-imageio==2.32.1            # Matches scikit-image 0.23 wheels.
+imageio==2.32.0            # Matches scikit-image 0.23 wheels.
 scikit-image==0.23.2
 pywavelets==1.8.0          # Direct dependency of scikit-image.
 imagecodecs==2025.3.30     # Matches scikit-image 0.23 wheels.

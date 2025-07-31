@@ -20,7 +20,7 @@ The pipeline focuses on analyzing cellular heterogeneity and tissue organization
 ## Project Structure
 
 ```
-learning-vit/
+ViT-on-Segmentation-MasksViT-on-Segmentation-Masks/
 ├── code/                           # Python source code
 │   ├── __init__.py                # Package initialization
 │   ├── segmentation_mask_dynamic_patches_vit.py  # Dynamic patch ViT extraction
@@ -263,7 +263,7 @@ If you use this pipeline in your research, please cite:
   author = {Christos Botos},
   title = {Learning ViT: Vision Transformer Analysis Pipeline for Kidney Injury Studies},
   year = {2025},
-  url = {https://github.com/ChrisBotos/learning-vit}
+  url = {https://github.com/ChrisBotos/ViT-on-Segmentation-MasksViT-on-Segmentation-Masks}
 }
 ```
 
