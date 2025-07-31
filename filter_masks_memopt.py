@@ -32,7 +32,7 @@ Usage Example:
         --output-prefix filtered_ \
         --min-pixels 20 --max-pixels 570 \
         --max-straight-fraction 0.25 \
-        --summary-csv --overlay --raw-image img/IRI_regist_cropped.tif
+        --summary-csv --overlay --raw-image data/IRI_regist_cropped.tif
 
 Tests:
     Run `pytest filter_masks_memopt.py -q` to execute the built‑in unit tests.

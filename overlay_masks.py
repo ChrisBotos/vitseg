@@ -22,7 +22,7 @@ Dependencies:
     • imagecodecs (optional, for compression)
 
 Usage:
-    python overlay_masks.py --image img/IRI_regist_cropped.tif --mask segmentation_masks.npy
+    python overlay_masks.py --image data/IRI_regist_cropped.tif --mask segmentation_masks.npy
                            --out overlay.tif --tile 1024 --workers 8 --alpha 0.4 --gpu
                            --batch-size 4 --memory-limit 8192
 
@@ -452,7 +452,7 @@ def blend_tile_with_mask(
         safe_mask_indices = mask_tensor % (max_lut_index + 1)
         colored_mask = lut_tensor[safe_mask_indices]  # Shape: (H, W, 3)
 
-        # Alpha blend: result = img * (1-alpha) + colored_mask * alpha
+        # Alpha blend: result = data * (1-alpha) + colored_mask * alpha
         blended = img_tensor * (1.0 - alpha) + colored_mask * alpha
         blended = xp.clip(blended, 0, 255).astype(xp.uint8)
 
@@ -1077,14 +1077,14 @@ def create_argument_parser() -> argparse.ArgumentParser:
         epilog="""
 Examples:
   # Basic usage with default settings
-  python overlay_masks.py --image img/sample.tif --mask masks.npy --out overlay.tif
+  python overlay_masks.py --image data/sample.tif --mask masks.npy --out overlay.tif
 
   # GPU-accelerated processing with custom memory limit
-  python overlay_masks.py --image img/large.tif --mask masks.npy --out overlay.tif \\
+  python overlay_masks.py --image data/large.tif --mask masks.npy --out overlay.tif \\
                           --gpu --memory-limit 6144 --batch-size 2
 
   # High-throughput processing with many workers
-  python overlay_masks.py --image img/huge.tif --mask masks.npy --out overlay.tif \\
+  python overlay_masks.py --image data/huge.tif --mask masks.npy --out overlay.tif \\
                           --workers 16 --tile 2048 --batch-size 8
 
 For kidney slice analysis from I/R injury studies, recommended settings:

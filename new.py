@@ -21,7 +21,7 @@ Key points
 
 
 Example:
-python new.py     -i img/IRI_regist_cropped.tif     -m filtered_results/filtered_passed_masks.npy     -o VIT_dynamic_patches     --patch_sizes 16 32 64     --batch_size 512     --model_name facebook/dino-vits16     --viz_crop_region 0 1 0 1
+python new.py     -i data/IRI_regist_cropped.tif     -m filtered_results/filtered_passed_masks.npy     -o VIT_dynamic_patches     --patch_sizes 16 32 64     --batch_size 512     --model_name facebook/dino-vits16     --viz_crop_region 0 1 0 1
 
 
 Author: Christos Botos – Mahfouz Lab

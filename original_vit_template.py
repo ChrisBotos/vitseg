@@ -77,7 +77,7 @@ def ext_features_coord(model, tissue, imgformat):
     print(f"############################################ Starting with {tissue}")
 
     # Define the path to the image
-    img_path = os.path.join(valid_data, "img", f"{tissue}.{imgformat}")
+    img_path = os.path.join(valid_data, "data", f"{tissue}.{imgformat}")
     img = Image.open(img_path).convert('RGB')
 
     # Get dimensions
@@ -140,5 +140,5 @@ def ext_features_coord(model, tissue, imgformat):
     print(f"Coordinates extracted and saved to: ViT/ViT_coord_{tissue}.csv")
 
 # Run on your image only
-# Ensure your file is named IRI_regist_cropped.tif under img/
+# Ensure your file is named IRI_regist_cropped.tif under data/
 ext_features_coord(vits16, 'IRI_regist_cropped', 'tif')

@@ -14,7 +14,7 @@ Dependencies:
 Usage:
     python white_segmentation_masks_on_black_background.py \
         --mask ss_bIRI2_clear_segmentation_masks.npy \
-        --output "img/ss_bIRI2 - Outside cleared.tif"
+        --output "data/ss_bIRI2 - Outside cleared.tif"
 
 Positional Arguments:
     None.

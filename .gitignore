@@ -6,7 +6,7 @@
 
 /valid_data
 
-/img/*
-!/img/.gitkeep
+/data/*
+!/data/.gitkeep
 
 ss_bIRI2_clear_segmentation_masks.npy

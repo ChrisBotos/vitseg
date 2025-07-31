@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-A minimal script to crop the IRI_regist.tif image in ./img using a flexible crop function.
+A minimal script to crop the IRI_regist.tif image in ./data using a flexible crop function.
 """
 
 import os
@@ -54,7 +54,7 @@ def main():
 
     # locate files relative to this script
     base_dir = os.path.abspath(os.path.dirname(__file__))
-    img_dir  = os.path.join(base_dir, "img")
+    img_dir  = os.path.join(base_dir, "data")
     input_path  = os.path.join(img_dir, "IRI_regist.tif")
     output_path = os.path.join(img_dir, "IRI_regist_cropped.tif")
 

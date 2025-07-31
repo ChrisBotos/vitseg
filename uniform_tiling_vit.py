@@ -38,7 +38,7 @@ Dependencies:
 
 Usage:
     python uniform_tiling_vit.py \
-        --image img/ss_bIRI2_binary_mask.tif \
+        --image data/ss_bIRI2_binary_mask.tif \
         --output VIT_uniform_tiles \
         --patch_size 64 \
         --stride 64 \

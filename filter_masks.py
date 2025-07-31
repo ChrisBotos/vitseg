@@ -12,7 +12,7 @@ python filter_masks.py \
   --min-hole-fraction 0.0  --max-hole-fraction 0.001 \
   --max-straight-fraction 0.25 \
   --summary-csv \
-  --raw-image img/IRI_regist_cropped.tif \
+  --raw-image data/IRI_regist_cropped.tif \
   --overlay
 """
 

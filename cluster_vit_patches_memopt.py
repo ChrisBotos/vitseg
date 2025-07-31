@@ -13,7 +13,7 @@ Dependencies:
     • numpy, pandas, scikit-learn, joblib, matplotlib, PIL, seaborn, scipy.
 
 Usage:
-    python cluster_vit_patches_memopt.py --image img.tif \
+    python cluster_vit_patches_memopt.py --image data.tif \
         --labels filtered_passed_labels.npy --label_map segmentation_masks.npy \
         --coords coords.csv --features_npy features.npy --features_csv features.csv \
         --clusters 10 --auto-k silhouette --batch-size 10000 \

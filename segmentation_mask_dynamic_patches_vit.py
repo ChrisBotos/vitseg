@@ -35,7 +35,7 @@ Dependencies:
 
 Usage:
     python segmentation_mask_dynamic_patches_vit.py \
-        -i img/IRI_regist_cropped.tif \
+        -i data/IRI_regist_cropped.tif \
         -m filtered_results/filtered_passed_masks.npy \
         -o VIT_dynamic_patches \
         --patch_sizes 16 32 64 \

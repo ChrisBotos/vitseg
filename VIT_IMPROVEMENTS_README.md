@@ -97,7 +97,7 @@ metrics = evaluator.evaluate_clustering(features, labels, coordinates)
 ### Basic Enhanced Feature Extraction
 ```bash
 python segmentation_mask_dynamic_patches_vit.py \
-    --image img/tissue_sample.tif \
+    --image data/tissue_sample.tif \
     --mask filtered_results/filtered_passed_masks.npy \
     --output enhanced_features \
     --patch_sizes 16 32 64 \
@@ -111,7 +111,7 @@ python segmentation_mask_dynamic_patches_vit.py \
 python enhanced_cluster_vit_patches.py \
     --features enhanced_features/features.csv \
     --coords enhanced_features/coords.csv \
-    --image img/tissue_sample.tif \
+    --image data/tissue_sample.tif \
     --labels filtered_results/filtered_passed_labels.npy \
     --label_map segmentation_masks.npy \
     --method ensemble \
