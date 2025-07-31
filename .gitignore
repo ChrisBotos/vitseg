@@ -1,6 +1,7 @@
 .idea
 
 /venv310
+/venv311
 
 /ViT
 
@@ -9,4 +10,31 @@
 /data/*
 !/data/.gitkeep
 
-ss_bIRI2_clear_segmentation_masks.npy
+# Results directory - ignore all contents except .gitkeep files
+/results/*
+!/results/.gitkeep
+!/results/masks/.gitkeep
+
+# Mask files in results/masks directory
+/results/masks/*
+!/results/masks/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+overlay.tif

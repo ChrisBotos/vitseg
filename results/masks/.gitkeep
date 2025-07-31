@@ -1,0 +1,2 @@
+# This file ensures the masks directory is tracked by git
+# All .npy mask files should be stored in this directory
