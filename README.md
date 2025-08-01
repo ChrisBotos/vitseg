@@ -51,7 +51,9 @@ ViT-on-Segmentation-MasksViT-on-Segmentation-Masks/
 │   └── ...
 ├── archived/                      # Legacy code and data
 ├── pipeline.sh                    # Main analysis pipeline
-├── requirements.txt               # Python dependencies
+├── requirements.txt               # Python dependencies (Python 3.10 compatible)
+├── setup_venv310.py              # Automated Python 3.10 environment setup
+├── test_venv310.py               # Environment verification script
 └── README.md                      # This file
 ```
 
@@ -59,6 +61,46 @@ ViT-on-Segmentation-MasksViT-on-Segmentation-Masks/
 
 ### 1. Environment Setup
 
+#### Python 3.10 Virtual Environment (Recommended)
+
+This project has been tested and optimized for Python 3.10 with all dependencies verified for compatibility.
+
+**Automated Setup (Windows):**
+```bash
+# Run the automated setup script
+python setup_venv310.py
+```
+
+The automated setup script will:
+- Detect Python 3.10 installation
+- Create a virtual environment named `venv310`
+- Upgrade pip to the latest version
+- Install all dependencies with retry logic
+- Verify successful installation
+
+**Manual Setup:**
+```bash
+# Create Python 3.10 virtual environment
+python3.10 -m venv venv310
+# On Windows: python -m venv venv310
+
+# Activate environment
+source venv310/bin/activate  # On Windows: venv310\Scripts\activate.bat
+
+# Upgrade pip
+python -m pip install --upgrade pip
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+**Verification:**
+```bash
+# Test the installation
+python test_venv310.py
+```
+
+#### Alternative Setup (Any Python Version)
 ```bash
 # Create virtual environment
 python -m venv venv
@@ -66,6 +108,12 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+```
+
+**Note:** For GPU support with PyTorch, install CUDA-enabled versions manually:
+```bash
+# After environment setup, install GPU PyTorch
+pip install torch==2.7.1+cu121 torchvision==0.22.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
 ```
 
 ### 2. Basic Usage

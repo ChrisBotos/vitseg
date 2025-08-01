@@ -58,8 +58,8 @@ USE_DYNAMIC_PATCHES=True     # True: dynamic patches, False: uniform tiling.
 ###############################################################################
 # 2 ┃ User‑editable parameters.                                                .
 ###############################################################################
-IMAGE="img/IRI_regist_cropped.tif"                # Original high‑resolution slide.
-BINARY_IMAGE="img/binary_IRI_regist_cropped.tif"         # 8‑bit binary mask (1 = nucleus).
+IMAGE="data/IRI_regist_cropped.tif"                # Original high‑resolution slide.
+BINARY_IMAGE="data/binary_IRI_regist_cropped.tif"         # 8‑bit binary mask (1 = nucleus).
 RAW_MASKS="results/masks/segmentation_masks.npy"   # Full segmentation map.
 
 # ViT patch sizes in pixels for multi-scale analysis.
