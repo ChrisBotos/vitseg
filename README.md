@@ -126,7 +126,7 @@ pip install torch==2.7.1+cu121 torchvision==0.22.1+cu121 --extra-index-url https
 
 # Step 1: Filter segmentation masks
 python code/filter_masks_memopt.py \
-    --input results/masks/segmentation_masks.npy \
+    --input masks/segmentation_masks.npy \
     --results-dir results/filtered_results \
     --min-pixels 20 --max-pixels 570
 
@@ -214,7 +214,7 @@ python -m pytest tests/ --cov=code --cov-report=html
 
 ### Input Data
 - **Microscopy images**: High-resolution TIFF files in `data/`
-- **Segmentation masks**: Integer-labeled masks in `results/masks/`
+- **Segmentation masks**: Integer-labeled masks in `masks/`
 - **Metadata**: CSV files with experimental annotations
 
 ### Output Structure
@@ -241,6 +241,7 @@ colors = config.generate_palette(n=10)
 ```
 
 ### Memory-Efficient Processing
+
 ```python
 from code.overlay_masks import OverlayConfig, create_memory_efficient_overlay
 
@@ -255,7 +256,7 @@ config = OverlayConfig(
 # Process large overlay
 create_memory_efficient_overlay(
     image_path="data/large_image.tif",
-    mask_path="results/masks/large_masks.npy",
+    mask_path="masks/large_masks.npy",
     output_path="results/overlay.tif",
     config=config
 )

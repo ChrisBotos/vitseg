@@ -31,9 +31,9 @@ set -euo pipefail  # Fail on the first error, unset variable, or failed pipe.
 #   • Filter features only: Set RUN_FEATURE_FILTERING=True and RUN_CLUSTERING=True.
 #   • Test feature filtering: Set RUN_VIT_EXTRACTION=True, RUN_FEATURE_FILTERING=True.
 #
-RUN_FILTER_MASKS=True       # Step 3.1: Filter segmentation masks.
-RUN_BINARY_CONVERSION=True  # Step 3.2: Convert mask set to binary TIFF.
-RUN_VIT_EXTRACTION=True      # Step 3.3: Extract ViT patch embeddings.
+RUN_FILTER_MASKS=False       # Step 3.1: Filter segmentation masks.
+RUN_BINARY_CONVERSION=False  # Step 3.2: Convert mask set to binary TIFF.
+RUN_VIT_EXTRACTION=False     # Step 3.3: Extract ViT patch embeddings.
 RUN_FEATURE_FILTERING=True  # Step 3.4: Filter features by box sizes.
 RUN_CLUSTERING=True          # Step 3.5: Cluster the embeddings.
 
@@ -60,7 +60,7 @@ USE_DYNAMIC_PATCHES=True     # True: dynamic patches, False: uniform tiling.
 ###############################################################################
 IMAGE="data/IRI_regist_cropped.tif"                # Original high‑resolution slide.
 BINARY_IMAGE="data/binary_IRI_regist_cropped.tif"         # 8‑bit binary mask (1 = nucleus).
-RAW_MASKS="results/masks/segmentation_masks.npy"   # Full segmentation map.
+RAW_MASKS="masks/segmentation_masks.npy"   # Full segmentation map.
 
 # ViT patch sizes in pixels for multi-scale analysis.
 # Multiple sizes capture different spatial patterns: fine details → tissue architecture.
@@ -77,7 +77,7 @@ PATCH_SIZES=(16 32 64)
 #   • (32 64)    - Local patterns and tissue architecture (skip fine details)
 #   • (16 32 64) - All scales (equivalent to no filtering)
 #
-FILTER_BOX_SIZES=(16)     # Box sizes to include in filtered features.
+FILTER_BOX_SIZES=(32)     # Box sizes to include in filtered features.
 
 K_INIT=10                 # Initial cluster count for k‑means.
 AUTO_K="none"              # Auto‑k behaviour ("none", "silhouette", "dbi").

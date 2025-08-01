@@ -13,11 +13,11 @@
 # Results directory - ignore all contents except .gitkeep files
 /results/*
 !/results/.gitkeep
-!/results/masks/.gitkeep
+!/masks/.gitkeep
 
-# Mask files in results/masks directory
-/results/masks/*
-!/results/masks/.gitkeep
+# Mask files in masks directory
+/masks/*
+!/masks/.gitkeep
 
 # Python cache
 __pycache__/
