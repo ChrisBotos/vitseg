@@ -28,7 +28,6 @@ ViT-on-Segmentation-MasksViT-on-Segmentation-Masks/
 │   ├── cluster_vit_patches_memopt.py  # Memory-efficient clustering
 │   ├── cluster_uniform_tiles_memopt.py  # Uniform tile clustering
 │   ├── filter_masks.py            # Mask quality control
-│   ├── filter_masks_memopt.py     # Memory-optimized mask filtering
 │   ├── filter_features_by_box_size.py  # Multi-scale feature filtering
 │   ├── overlay_masks.py           # High-quality visualization
 │   ├── color_config.py            # Color palette management
@@ -125,7 +124,7 @@ pip install torch==2.7.1+cu121 torchvision==0.22.1+cu121 --extra-index-url https
 # Or run individual steps:
 
 # Step 1: Filter segmentation masks
-python code/filter_masks_memopt.py \
+python code/filter_masks.py \
     --input masks/segmentation_masks.npy \
     --results-dir results/filtered_results \
     --min-pixels 20 --max-pixels 570

@@ -77,7 +77,7 @@ PATCH_SIZES=(16 32 64)
 #   • (32 64)    - Local patterns and tissue architecture (skip fine details)
 #   • (16 32 64) - All scales (equivalent to no filtering)
 #
-FILTER_BOX_SIZES=(32)     # Box sizes to include in filtered features.
+FILTER_BOX_SIZES=(16 32)     # Box sizes to include in filtered features.
 
 K_INIT=10                 # Initial cluster count for k‑means.
 AUTO_K="none"              # Auto‑k behaviour ("none", "silhouette", "dbi").

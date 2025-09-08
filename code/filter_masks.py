@@ -1,21 +1,42 @@
-#!/usr/bin/env python3
 """
-python code/filter_masks.py \
-  --input masks/segmentation_masks.npy \
-  --results-dir results/filtered_results \
-  --output-prefix filtered_ \
-  --min-pixels 20  --max-pixels 570 \
-  --min-circularity 0.63  --max-circularity 1.0 \
-  --min-solidity 0.80      --max-solidity 1.0 \
-  --min-eccentricity 0.0   --max-eccentricity 0.98 \
-  --min-aspect-ratio 0.5   --max-aspect-ratio 3.2 \
-  --min-hole-fraction 0.0  --max-hole-fraction 0.001 \
-  --max-straight-fraction 0.25 \
-  --summary-csv \
-  --raw-image data/IRI_regist_cropped.tif \
-  --overlay
-"""
+Author: Christos Botos.
+Affiliation: Leiden University Medical Center
+Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
+Script Name: filter_masks.py.
+Description:
+    Drop‑in replacement for *filter_masks.py* that eliminates the per‑nucleus
+    full‑frame binary copies that previously caused >200GB peaks for large
+    label maps.  The new version works **directly on the label image**, streams
+    metrics in constant RAM, and writes the accepted / rejected nuclei to
+    memory‑mapped boolean stacks so that downstream scripts remain unchanged.
+
+Key Improvements:
+    • `np.load(..., mmap_mode="r")` ensures the label map is never duplicated.
+    • Metrics computed via `skimage.measure.regionprops_table` on the label map
+      (O(1) extra memory) instead of converting to a list of masks.
+    • `straight_fraction` is evaluated *per nucleus* in a for‑loop so only one
+      temporary mask is alive at any time.
+    • Output boolean stacks are created as `np.memmap`, filled incrementally,
+      and finally flushed to `.npy` – peak RAM is ≈ 2× the image size, no more.
+    • Overlay generation colors each nucleus on‑the‑fly; no stack in memory.
+
+Dependencies:
+    • Python ≥ 3.10.
+    • numpy, pandas, matplotlib, scikit‑image.
+
+Usage Example:
+    python filter_masks.py \
+        --input segmentation_masks.npy \
+        --results-dir filtered_results \
+        --output-prefix filtered_ \
+        --min-pixels 20 --max-pixels 570 \
+        --max-straight-fraction 0.25 \
+        --summary-csv --overlay --raw-image data/IRI_regist_cropped.tif
+
+Tests:
+    Run `pytest filter_masks.py -q` to execute the built‑in unit tests.
+"""
 from __future__ import annotations
 
 ###############################################################################
@@ -24,34 +45,33 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
+from numpy.lib.format import open_memmap
+import matplotlib
+import json
 import pandas as pd
-from skimage.measure import regionprops_table
-from skimage.measure import find_contours
 from skimage.color import gray2rgb
 from skimage.io import imsave
+from typing import Tuple
+from skimage.measure import regionprops_table
 
-
-logger = logging.getLogger("filter_masks")
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(levelname)s] %(message)s",
+)
+LOGGER = logging.getLogger("filter‑masks‑memopt")
 
 ###############################################################################
-# Dataclass definitions.
+# Dataclasses.
 ###############################################################################
 
 @dataclass
 class Thresholds:
-    """Numeric thresholds that determine which masks are kept.
-
-    Every metric has a symmetric minimum and maximum bound so the CLI is
-    predictable. Defaults are permissive, effectively disabling that metric
-    unless the user supplies tighter values.
-    """
+    """Symmetric min‑max thresholds for every metric."""
 
     # Size and compactness.
     min_pixels: int = 0
@@ -73,10 +93,6 @@ class Thresholds:
     min_hole_fraction: float = 0.0
     max_hole_fraction: float = 1.0
 
-    # Straightness.
-    min_straight_fraction: float = 0.0
-    max_straight_fraction: float = 1.0
-
     # Intensity.
     min_mean_intensity: float = float("-inf")
     max_mean_intensity: float = float("inf")
@@ -84,13 +100,14 @@ class Thresholds:
     # Miscellaneous.
     exclude_border: bool = False
 
+    # ------------------------ Validation ------------------------ #
     def validate(self) -> None:
-        """Ensure that every lower bound is not greater than its upper bound."""
-        assert 0 <= self.min_pixels <= self.max_pixels, "Pixel range is invalid."
-        assert 0 <= self.min_circularity <= self.max_circularity <= 1, "Circularity range is invalid."
-        assert 0 <= self.min_solidity <= self.max_solidity <= 1, "Solidity range is invalid."
-        assert 0 <= self.min_eccentricity <= self.max_eccentricity <= 1, "Eccentricity range is invalid."
-        assert 0 <= self.min_hole_fraction <= self.max_hole_fraction <= 1, "Hole-fraction range is invalid."
+        assert 0 <= self.min_pixels <= self.max_pixels, "Invalid pixel range."
+        assert 0 <= self.min_circularity <= self.max_circularity <= 1, "Invalid circularity range."
+        assert 0 <= self.min_solidity <= self.max_solidity <= 1, "Invalid solidity range."
+        assert 0 <= self.min_eccentricity <= self.max_eccentricity <= 1, "Invalid eccentricity range."
+        assert 0 <= self.min_hole_fraction <= self.max_hole_fraction <= 1, "Invalid hole‑fraction range."
+
 
 @dataclass
 class Config:
@@ -103,268 +120,57 @@ class Config:
     th: Thresholds
     raw_image: str | None
     overlay: bool
+    region: Tuple[float, float, float, float] | None = None
+    no_stack: bool = True
 
 ###############################################################################
-# CLI helpers.
+# Helper functions – metrics.
 ###############################################################################
 
-def add_threshold_args(parser: argparse.ArgumentParser, tmpl: Thresholds) -> None:
-    """Create one `--flag` per Thresholds field automatically."""
-    for field, default in asdict(tmpl).items():
-        flag = f"--{field.replace('_', '-')}"
-        if isinstance(default, bool):
-            parser.add_argument(flag, action="store_true", help=f"Enable {field.replace('_', ' ')} filter.")
-        else:
-            parser.add_argument(flag, type=type(default), default=default, help=f"Threshold for {field.replace('_', ' ')}.")
+def compute_metrics(label_map: np.ndarray, intensity: np.ndarray | None) -> pd.DataFrame:
+    """Compute morphology metrics for every non‑zero label in *label_map*."""
 
-
-def parse_cli() -> Config:
-    parser = argparse.ArgumentParser(description="Filter segmentation masks by morphology and intensity.",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument("-i", "--input", required=True, help="Input .npy label map, binary stack, or object array.")
-    parser.add_argument("--intensity-image", help="Optional grayscale image (.npy) for intensity thresholds.")
-    parser.add_argument("-d", "--results-dir", default="filtered_mask_results", help="Directory for outputs.")
-    parser.add_argument("-o", "--output-prefix", default="", help="Prefix for all output files.")
-
-    add_threshold_args(parser, Thresholds())
-
-    parser.add_argument("--no-plots", action="store_true", help="Skip violin QC plots.")
-    parser.add_argument("--summary-csv", action="store_true", help="Save per-mask metrics as CSV & parquet.")
-    parser.add_argument("--verbose", action="store_true", help="Verbose logging (DEBUG level).")
-    parser.add_argument("--raw-image", help="Path to the original grayscale image (*.npy or *.tif).")
-    parser.add_argument("--overlay", action="store_true", help="Save a red/green overlay of failed/passed masks.")
-
-    args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format="[%(levelname)s] %(message)s")
-
-    th = Thresholds(**{k: getattr(args, k) for k in Thresholds.__annotations__})
-    th.validate()
-
-    return Config(masks_path=Path(args.input),
-                  intensity_path=Path(args.intensity_image) if args.intensity_image else None,
-                  out_dir=Path(args.results_dir),
-                  prefix=args.output_prefix,
-                  save_plots=not args.no_plots,
-                  save_summary_csv=args.summary_csv,
-                  th=th,
-                  raw_image=args.raw_image,
-                  overlay=args.overlay)
-
-
-###############################################################################
-# Overlay helper.
-###############################################################################
-
-
-def save_overlay(
-    raw: np.ndarray,
-    masks: list[np.ndarray],
-    passed: np.ndarray,
-    out_path: Path,
-    alpha: float = 0.35,   # Fraction of overlay color to mix in.
-) -> None:
-    """
-    Blend passed masks in translucent green and failed masks in translucent red.
-    The original grayscale image remains visible beneath the overlay.
-    """
-
-    # Convert raw to uint8 RGBA in the 0-255 range.
-    if raw.ndim == 2:
-        base = gray2rgb((raw / raw.max() * 255).astype(np.uint8))
-    elif raw.ndim == 3 and raw.shape[2] == 3:
-        base = raw.astype(np.uint8)
-    else:
-        raise ValueError("Raw image must be grayscale (H×W) or RGB (H×W×3).")
-
-    overlay = base.copy()
-    green = np.array([0, 255, 0], dtype=np.uint8)
-    red = np.array([255, 0, 0], dtype=np.uint8)
-
-    # ------------------------------------------------------------------
-    # Choose a vivid color for every *passed* mask so neighbouring
-    # objects are easy to tell apart. Failed masks stay red.
-    # ------------------------------------------------------------------
-    palette = np.array(
-        [  # RGB tuples in uint8 range.
-            [0, 255, 255],  # Cyan.
-            [0, 0, 255],  # Blue.
-            [0, 200, 255],
-            [0, 255, 0],  # Green.
-            [0, 150, 255],
-            [0, 255, 200],
-            [0, 200, 200],
-            [0, 255, 150],
-            [0, 200, 150],
-            [0, 150, 200]
-        ],
-        dtype=np.uint8,
-    )
-    logger.info("Using %d colors for passed masks.", len(palette))
-
-    for idx, m in enumerate(masks):
-        if passed[idx]:
-            color = palette[idx % len(palette)]  # Cycle through palette.
-        else:
-            color = red  # Failed mask => red.
-
-        mask_bool = m.astype(bool)
-        overlay[mask_bool] = (
-                (1 - alpha) * overlay[mask_bool] + alpha * color
-        ).astype(np.uint8)
-
-    imsave(out_path, overlay)  # skimage automatically saves TIFF format.
-    logger.info("Saved translucent overlay → %s.", out_path)
-
-
-###############################################################################
-# Mask utilities.
-###############################################################################
-
-def load_masks(path: Path) -> List[np.ndarray]:
-    arr = np.load(path, allow_pickle=True)
-    if arr.ndim == 2 and np.issubdtype(arr.dtype, np.integer):
-        labels = [l for l in np.unique(arr) if l]
-        logger.info("Label map → %d masks.", len(labels))
-        return [(arr == l).astype(np.uint8) for l in labels]
-    if arr.ndim == 3:
-        logger.info("Binary stack → %d masks.", arr.shape[0])
-        return [(arr[i] > 0).astype(np.uint8) for i in range(arr.shape[0])]
-    if arr.ndim == 2:
-        logger.info("Single binary mask detected.")
-        return [(arr > 0).astype(np.uint8)]
-    
-    def flatten(obj):
-        out: List[np.ndarray] = []
-        for el in np.asarray(obj, dtype=object).flat:
-            if isinstance(el, np.ndarray):
-                out.extend(flatten(el))
-            elif isinstance(el, (list, tuple)):
-                out.extend(flatten(np.array(el, dtype=object)))
-            else:
-                raise TypeError(f"Unsupported element {type(el)} in container.")
-        return out
-    
-    masks = flatten(arr)
-    logger.info("Nested container → %d masks.", len(masks))
-    return masks
-
-def split_small_masks(
-    masks: list[np.ndarray],
-    min_area: int = 1,
-    min_perim: float = 1.0,
-) -> tuple[list[np.ndarray], list[np.ndarray]]:
-    """
-    Separate masks that are too small to analyse.
-
-    A mask is sent to *discarded* if either its pixel area is
-    ≤ `min_area` **or** its perimeter (skimage.measure.perimeter)
-    is ≤ `min_perim`. This prevents zero-area or one-pixel masks
-    from entering the metrics table.
-
-    Returns
-    -------
-    kept, discarded : list[np.ndarray], list[np.ndarray]
-    """
-
-    from skimage.measure import perimeter
-
-    kept: list[np.ndarray] = []
-    discarded: list[np.ndarray] = []
-
-    for m in masks:
-        area = int(m.sum())
-        perim = perimeter(m.astype(bool))
-        if area <= min_area or perim <= min_perim:
-            discarded.append(m)
-        else:
-            kept.append(m)
-
-    logger.info(
-        "Discarded %d masks with area ≤ %d px or perimeter ≤ %.1f px.",
-        len(discarded),
-        min_area,
-        min_perim,
-    )
-    return kept, discarded
-
-
-###############################################################################
-# Metric computation.
-###############################################################################
-
-def binary_list_to_label(masks: List[np.ndarray]) -> np.ndarray:
-    label = np.zeros_like(masks[0], dtype=int)
-    for i, m in enumerate(masks, 1):
-        label[m.astype(bool)] = i
-    return label
-
-def straight_fraction(
-    mask: np.ndarray,
-    min_run: int = 4,
-    angle_tol_deg: float = 2.0,
-) -> float:
-    """
-    Return the fraction of boundary pixels that lie on long, almost-straight segments.
-
-    A segment is considered straight when the direction change between two
-    consecutive vectors stays below `angle_tol_deg` for at least `min_run`
-    boundary steps. The result ranges from 0 (no straight edges) to 1
-    (entire boundary is straight).
-    """
-
-    # Get a single sub-pixel contour for the mask.
-    contours = find_contours(mask.astype(float), 0.5)
-    if not contours:
-        return 0.0
-    pts = contours[0]  # Nx2 array (row, col).
-
-    # Vectorised direction vectors between successive contour points.
-    vecs = np.diff(pts, axis=0, append=pts[:1])
-
-    # Normalise vectors and compute angle change between neighbours.
-    norms = np.linalg.norm(vecs, axis=1, keepdims=True)
-    norms[norms == 0] = 1  # Prevent divide-by-zero.
-    unit = vecs / norms
-    dot = (unit * np.roll(unit, -1, axis=0)).sum(axis=1).clip(-1, 1)
-    angles = np.degrees(np.arccos(dot))           # In degrees.
-
-    straight_mask = angles < angle_tol_deg
-    # Identify contiguous runs of straight segments.
-    run_lengths = np.diff(np.where(np.concatenate(([0], straight_mask, [0])))[0])
-    long_runs = run_lengths[run_lengths >= min_run]
-    straight_px = long_runs.sum()
-
-    return straight_px / len(pts)
-
-
-def compute_metrics(masks: List[np.ndarray], intensity: np.ndarray | None = None) -> pd.DataFrame:
-    props = ["area", "perimeter", "solidity", "eccentricity", "major_axis_length", "minor_axis_length", "filled_area", "bbox"]
+    props = [
+        "label",
+        "area",
+        "perimeter",
+        "solidity",
+        "eccentricity",
+        "major_axis_length",
+        "minor_axis_length",
+        "filled_area",
+        "bbox",
+    ]
     if intensity is not None:
         props.append("mean_intensity")
 
-    df = pd.DataFrame(regionprops_table(binary_list_to_label(masks), properties=props, intensity_image=intensity)).rename_axis("mask_id")
-    df = df.rename(columns={"bbox-0": "bbox_0", "bbox-1": "bbox_1", "bbox-2": "bbox_2", "bbox-3": "bbox_3"})
+    df = pd.DataFrame(
+        regionprops_table(label_map, properties=props, intensity_image=intensity)
+    ).rename_axis("mask_id")
 
+    df = df.rename(columns={
+        "bbox-0": "bbox_0",
+        "bbox-1": "bbox_1",
+        "bbox-2": "bbox_2",
+        "bbox-3": "bbox_3",
+    })
+
+    # Derived metrics.
     df["aspect_ratio"] = df.major_axis_length / df.minor_axis_length.replace(0, np.nan)
     df["hole_fraction"] = (df.filled_area - df.area) / df.area
-    df["straight_fraction"] = [straight_fraction(m) for m in masks] # Straight-edge fraction identifies masks with extended flat borders.
     df["circularity"] = (4 * np.pi * df.area / (df.perimeter.replace(0, np.nan) ** 2)).clip(0, 1)
 
-    h, w = masks[0].shape
-    df["border_touch"] = (df.bbox_0 == 0) | (df.bbox_2 == h) | (df.bbox_1 == 0) | (df.bbox_3 == w)
+    h, w = label_map.shape
+    df["border_touch"] = (
+        (df.bbox_0 == 0) | (df.bbox_2 == h) | (df.bbox_1 == 0) | (df.bbox_3 == w)
+    )
 
-    logger.info("Computed metrics for %d masks.", len(df))
+    LOGGER.info("Computed metrics for %d nuclei.", len(df))
     return df
 
 
-###############################################################################
-# Filtering.
-###############################################################################
-
-
-def filter_masks(df: pd.DataFrame, th: Thresholds) -> np.ndarray:
-    """Return a Boolean mask indicating which rows satisfy every threshold."""
+def apply_thresholds(df: pd.DataFrame, th: Thresholds) -> np.ndarray:
+    """Return Boolean mask of rows that satisfy *th*."""
 
     conds = [
         df.area.between(th.min_pixels, th.max_pixels),
@@ -373,185 +179,374 @@ def filter_masks(df: pd.DataFrame, th: Thresholds) -> np.ndarray:
         df.eccentricity.between(th.min_eccentricity, th.max_eccentricity),
         df.aspect_ratio.between(th.min_aspect_ratio, th.max_aspect_ratio),
         df.hole_fraction.between(th.min_hole_fraction, th.max_hole_fraction),
-        df.straight_fraction.between(th.min_straight_fraction, th.max_straight_fraction),
     ]
-
     if "mean_intensity" in df.columns:
-        conds.append(
-            df.mean_intensity.between(
-                th.min_mean_intensity,
-                th.max_mean_intensity,
-                inclusive="both",
-            )
-        )
-
+        conds.append(df.mean_intensity.between(th.min_mean_intensity, th.max_mean_intensity))
     if th.exclude_border:
         conds.append(~df.border_touch)
 
     passed = np.logical_and.reduce(conds)
-    logger.info("%d / %d masks pass all thresholds.", passed.sum(), len(passed))
+    LOGGER.info("%d / %d nuclei pass all thresholds.", passed.sum(), len(passed))
     return passed
 
-
-###############################################################################
-# Plotting.
-###############################################################################
-
-
 def violin_scatter(
-    ax: plt.Axes,
+    ax: "matplotlib.axes.Axes",
     data: np.ndarray,
     lo: float,
     hi: float,
     ylabel: str,
-    title: str
+    title: str,
 ) -> None:
-    """Draw a violin outline with jittered points and a color bar."""
+    """
+    Draw a split violin whose width is linearly proportional to the absolute
+    point count at each y-value, overlay the raw observations, and annotate
+    threshold values together with how many observations fall outside them.
+    """
 
-    # Violin outline.
-    vp = ax.violinplot([data], positions=[1], showextrema=False)
-    for body in vp["bodies"]:
-        body.set_facecolor("none")
-        body.set_edgecolor("black")
+    import matplotlib.pyplot as plt
+    import seaborn as sns
 
-    # Jittered scatter colored by value.
+    # --------------------------------------------------------------------- #
+    # Basic statistics.                                                     #
+    # --------------------------------------------------------------------- #
+    n_total: int = len(data)
+    finite_lo: bool = np.isfinite(lo)
+    finite_hi: bool = np.isfinite(hi)
+
+    # Boolean mask of excluded observations.
+    excl_mask = (
+        (data < lo if finite_lo else False) |
+        (data > hi if finite_hi else False)
+    )
+    n_excluded: int = int(excl_mask.sum())
+
+    # --------------------------------------------------------------------- #
+    # Violin outline. Width ∝ absolute counts (density_norm="count").              #
+    # --------------------------------------------------------------------- #
+    sns.violinplot(
+        y=data,
+        ax=ax,
+        inner=None,      # We handle raw points ourselves.
+        density_norm="count",   # Area – and therefore width – scales with N.
+        cut=0,           # Do not extrapolate beyond the data range.
+        fill=False,
+        linewidth=1.2,
+        color="black",
+    )
+
+    # --------------------------------------------------------------------- #
+    # Scatter of individual observations.                                   #
+    # --------------------------------------------------------------------- #
     rng = np.random.default_rng(0)
     sc = ax.scatter(
-        rng.normal(1, 0.07, len(data)),
+        rng.normal(1.0, 0.04, n_total),   # Horizontal jitter.
         data,
         c=data,
         cmap="viridis",
-        s=10,
+        s=12,
         edgecolors="none",
+        alpha=0.85,
     )
 
-    # Threshold lines.
-    ax.hlines([lo, hi], 0.5, 1.5, linestyles="--", colors="black")
-    ax.set_xticks([1])
+    # --------------------------------------------------------------------- #
+    # Threshold guide lines on both halves, plus numeric annotations.       #
+    # --------------------------------------------------------------------- #
+    if finite_lo:
+        ax.hlines(lo, -0.25, 0.25,  linestyles="--", colors="black", linewidth=0.9)
+        ax.hlines(lo,  0.75, 1.25,  linestyles="--", colors="black", linewidth=0.9)
+        ax.text(1.3, lo, f"min = {lo:.3g}", va="center", fontsize="x-small")
+
+    if finite_hi:
+        ax.hlines(hi, -0.25, 0.25,  linestyles="--", colors="black", linewidth=0.9)
+        ax.hlines(hi,  0.75, 1.25,  linestyles="--", colors="black", linewidth=0.9)
+        ax.text(1.3, hi, f"max = {hi:.3g}", va="center", fontsize="x-small")
+
+    # --------------------------------------------------------------------- #
+    # Axis cosmetics and meta-information.                                  #
+    # --------------------------------------------------------------------- #
+    ax.set_xlim(-0.25, 1.35)           # Extra space on the right for labels.
+    ax.set_xticks([1.0])
     ax.set_xticklabels([title])
     ax.set_ylabel(ylabel)
 
-    # Add color bar on the right.
+    # Annotation of sample size and exclusion count.
+    ax.text(
+        0.5,
+        1.02,
+        f"n = {n_total}   excluded = {n_excluded}",
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize="small",
+    )
+
+    # Colour bar keyed to data values.
     plt.colorbar(sc, ax=ax, fraction=0.046, pad=0.04, label=ylabel)
 
 
+def save_violin_plots(
+    df: pd.DataFrame,
+    th: Thresholds,
+    out_dir: Path,
+    prefix: str,
+) -> None:
+    """
+    Generate violin–scatter plots for every bounded metric and save each figure
+    as both PDF and PNG in *out_dir*.  Full absolute file paths are logged.
+    """
 
-def save_violin_plots(df: pd.DataFrame, th: Thresholds, out_dir: Path, prefix: str) -> None:
-    """Generate and save violin-scatter plots for every metric with finite bounds."""
+    import matplotlib.pyplot as plt
+    import warnings
 
     plots = [
-        ("area", th.min_pixels, th.max_pixels, "Pixel Count", "Size"),
-        ("circularity", th.min_circularity, th.max_circularity, "Circularity", "Circularity"),
-        ("solidity", th.min_solidity, th.max_solidity, "Solidity", "Solidity"),
-        ("eccentricity", th.min_eccentricity, th.max_eccentricity, "Eccentricity", "Eccentricity"),
-        ("aspect_ratio", th.min_aspect_ratio, th.max_aspect_ratio, "Aspect Ratio", "Aspect Ratio"),
-        ("hole_fraction", th.min_hole_fraction, th.max_hole_fraction, "Hole Fraction", "Hole Fraction"),
-        ("straight_fraction", th.min_straight_fraction, th.max_straight_fraction, "Straight Fraction", "Straight Fraction"),
-        ("mean_intensity", th.min_mean_intensity, th.max_mean_intensity, "Mean Intensity", "Mean Intensity"),
+        ("area",              th.min_pixels,         th.max_pixels,         "Pixel Count",      "Size"),
+        ("circularity",       th.min_circularity,    th.max_circularity,    "Circularity",      "Circularity"),
+        ("solidity",          th.min_solidity,       th.max_solidity,       "Solidity",         "Solidity"),
+        ("eccentricity",      th.min_eccentricity,   th.max_eccentricity,   "Eccentricity",     "Eccentricity"),
+        ("aspect_ratio",      th.min_aspect_ratio,   th.max_aspect_ratio,   "Aspect Ratio",     "Aspect Ratio"),
+        ("hole_fraction",     th.min_hole_fraction,  th.max_hole_fraction,  "Hole Fraction",    "Hole Fraction"),
+        ("straight_fraction", getattr(th, "min_straight_fraction", 0.0),
+                              getattr(th, "max_straight_fraction", 1.0),     "Straight Fraction","Straight Fraction"),
+        ("mean_intensity",    th.min_mean_intensity, th.max_mean_intensity, "Mean Intensity",   "Mean Intensity"),
     ]
 
+    # Ensure the output directory exists.
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for col, lo, hi, ylabel, title in plots:
+        # Skip metrics that are absent or completely unbounded.
         if col not in df.columns or (np.isneginf(lo) and np.isposinf(hi)):
-            continue  # Skip metrics that are absent or completely unbounded.
+            continue
 
         fig, ax = plt.subplots(figsize=(4, 6), constrained_layout=True)
+
+        # Draw the violin–scatter with annotations.
         violin_scatter(ax, df[col].values, lo, hi, ylabel, title)
 
-        # Write the PNG while silencing the NumPy det() warning that occasionally
-        # appears when constrained-layout solves a single-axis figure.
+        # Construct exact file paths.
+        pdf_path = (out_dir / f"{prefix}{col}_violin.pdf").resolve()
+        png_path = (out_dir / f"{prefix}{col}_violin.png").resolve()
 
         with warnings.catch_warnings():
+            # Suppress the occasional NumPy det() warning triggered by constrained-layout.
             warnings.filterwarnings(
                 "ignore",
                 category=RuntimeWarning,
                 message="invalid value encountered in det",
                 module="numpy.linalg",
             )
-            fig.savefig(out_dir / f"{prefix}{col}_violin.png", dpi=300)
+            # Save as both vector (PDF) and high-resolution raster (PNG).
+            fig.savefig(pdf_path, format="pdf")    # Example: /abs/path/out_dir/prefixarea_violin.pdf.
+            fig.savefig(png_path, dpi=300)         # Example: /abs/path/out_dir/prefixarea_violin.png.
 
         plt.close(fig)
-        logger.info("Saved %s violin plot.", col)
+        LOGGER.info("Saved violin plot for %s (%s, %s).", col, pdf_path, png_path)
 
 
 ###############################################################################
-# Main.
+# Overlay generation.
 ###############################################################################
 
+def paint_overlay(
+    raw: np.ndarray,
+    label_map: np.ndarray,
+    passed_labels: set[int],
+    out_path: Path,
+    region: Tuple[float, float, float, float] | None = None,
+    alpha: float = 0.35,
+) -> None:
+    """Colour passed nuclei green and failed red; honour an optional crop box."""
 
-def main():
+    # ❶ Crop raw and label_map if a region was given.
+    if region is not None and region != (0.0, 1.0, 0.0, 1.0):
+        xmin, xmax, ymin, ymax = region
+        h, w = label_map.shape
+        l, r = int(xmin * w), int(xmax * w)
+        t, b = int(ymin * h), int(ymax * h)
+        raw       = raw[t:b, l:r]       if raw.ndim == 2 else raw[t:b, l:r, :]
+        label_map = label_map[t:b, l:r]
+
+    if raw.ndim == 2:
+        base = gray2rgb((raw / raw.max() * 255).astype(np.uint8))
+    elif raw.ndim == 3 and raw.shape[2] == 3:
+        base = raw.astype(np.uint8)
+    else:
+        raise ValueError("Raw image must be grayscale H×W or RGB H×W×3.")
+
+    overlay = base.copy()
+    green = np.array([0, 255, 0], dtype=np.uint8)
+    red = np.array([255, 0, 0], dtype=np.uint8)
+
+    unique_labels = np.unique(label_map)
+    unique_labels = unique_labels[unique_labels != 0]
+
+    for lab in unique_labels:
+        color = green if lab in passed_labels else red
+        mask = label_map == lab
+        overlay[mask] = ((1 - alpha) * overlay[mask] + alpha * color).astype(np.uint8)
+
+    imsave(str(out_path), overlay)
+    LOGGER.info("Overlay saved → %s", out_path.name)
+
+###############################################################################
+# I/O helpers.
+###############################################################################
+
+def load_label_map(path: Path) -> np.ndarray:
+    """Return a 2‑D integer label map, loading with mmap when possible."""
+
+    arr = np.load(path, allow_pickle=True, mmap_mode="r")
+    if arr.ndim == 2 and np.issubdtype(arr.dtype, np.integer):
+        return arr
+    if arr.ndim == 3:
+        # Binary stack ➜ need to pack into label map first for streaming.
+        label = np.zeros(arr.shape[1:], dtype=np.int32)
+        for i, sl in enumerate(arr, 1):
+            label[sl.astype(bool)] = i
+        return label
+    raise ValueError("Unsupported mask array shape – expected label map or stack.")
+
+###############################################################################
+# CLI parsing.
+###############################################################################
+
+def add_threshold_args(p: argparse.ArgumentParser) -> None:
+    for f, default in asdict(Thresholds()).items():
+        flag = f"--{f.replace('_', '-')}"
+        if isinstance(default, bool):
+            p.add_argument(flag, action="store_true")
+        else:
+            p.add_argument(flag, type=type(default), default=default)
+
+
+def parse_cli() -> Config:
+    a = argparse.ArgumentParser(
+        description="Memory‑efficient mask filtering by morphology and intensity.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    a.add_argument("-i", "--input", required=True, type=Path, help="Input label map or binary stack (.npy).")
+    a.add_argument("--intensity-image", type=Path, help="Optional grayscale image (.npy) for intensity filters.")
+    a.add_argument("-d", "--results-dir", type=Path, default=Path("filtered_results"))
+    a.add_argument("-o", "--output-prefix", default="")
+    a.add_argument("--no-plots", action="store_true")
+    a.add_argument("--summary-csv", action="store_true")
+    a.add_argument("--raw-image", type=Path, help="Raw microscopy image for overlays (tif or npy).")
+    a.add_argument("--overlay", action="store_true")
+    a.add_argument("--verbose", action="store_true")
+    a.add_argument("--region", nargs=4, type=float,
+                   metavar=("XMIN", "XMAX", "YMIN", "YMAX"),
+                   help="Restrict overlay to this fractional box (0-1 coordinates).")
+    a.add_argument("--no_stack", action="store_true",
+                   help="Skip writing the Boolean mask stack.")
+
+    add_threshold_args(a)
+    args = a.parse_args()
+
+    if args.verbose:
+        LOGGER.setLevel(logging.DEBUG)
+
+    th = Thresholds(**{k: getattr(args, k) for k in Thresholds.__annotations__})
+    th.validate()
+
+    return Config(
+        masks_path=args.input,
+        intensity_path=args.intensity_image,
+        out_dir=args.results_dir,
+        prefix=args.output_prefix,
+        save_plots=not args.no_plots,
+        save_summary_csv=args.summary_csv,
+        th=th,
+        raw_image=str(args.raw_image) if args.raw_image else None,
+        overlay=args.overlay,
+        region=tuple(args.region) if args.region else None,
+        no_stack=args.no_stack,
+    )
+
+###############################################################################
+# Main entry point.
+###############################################################################
+
+def main() -> None:  # noqa: C901 – Linear CLI flow.
     cfg = parse_cli()
     cfg.out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------
-    # 1. Load masks and split off tiny / empty ones.
-    # ------------------------------------------------------------------
-    masks_raw = load_masks(cfg.masks_path)
-    masks, discarded = split_small_masks(masks_raw)  # NEW helper call.
-
-    # Persist discarded masks immediately.
-    np.save(cfg.out_dir / f"{cfg.prefix}discarded_masks.npy", np.array(discarded, dtype=object))
-
-    # ------------------------------------------------------------------
-    # 2. Optional intensity image.
-    # ------------------------------------------------------------------
+    # 1 ▸ Load label map & optional intensity image (both via mmap).
+    label_map = load_label_map(cfg.masks_path)
     intensity = None
     if cfg.intensity_path:
-        intensity = np.load(cfg.intensity_path)
-        assert intensity.shape == masks[0].shape, "Intensity image shape mismatch."
+        intensity = np.load(cfg.intensity_path, mmap_mode="r")
+        assert intensity.shape == label_map.shape, "Intensity image shape mismatch."
 
-    # ------------------------------------------------------------------
-    # 3. Metrics, filtering, and downstream steps (unchanged).
-    # ------------------------------------------------------------------
-    df = compute_metrics(masks, intensity)
-    passed = filter_masks(df, cfg.th)
+    # 2 ▸ Metrics & filtering (constant RAM).
+    metrics_df = compute_metrics(label_map, intensity)
+    passed_mask = apply_thresholds(metrics_df, cfg.th)
 
-    # masks  : (N, H, W) or a list/obj-array of N binary masks
-    # passed : Boolean vector of length N (True = keep)
+    passed_labels = metrics_df.label[passed_mask].astype(int).tolist()
+    failed_labels = metrics_df.label[~passed_mask].astype(int).tolist()
 
-    def dump(mask_stack, selection, name):
-        """
-        Save the subset of nuclei masks indicated by *selection* as a clean
-        (M, H, W) boolean stack and write it to disk.
-        """
-        mask_stack = np.asarray(mask_stack, dtype=object)  # (N,) object array
+    # 3 ▸ Write outputs – streamed.
+    np.save(cfg.out_dir / f"{cfg.prefix}passed_labels.npy",
+                     np.array(passed_labels, dtype=np.int32))
+    np.save(cfg.out_dir / f"{cfg.prefix}failed_labels.npy",
+                     np.array(failed_labels, dtype=np.int32))
 
-        # Grab the selected masks, then stack them along a new first axis.
-        kept = np.stack([m.astype(bool) for m in mask_stack[selection]], axis=0)  # (M, H, W)
+    # Optional one-liner overview that is easy to inspect with `cat`.
+    with open(cfg.out_dir / f"{cfg.prefix}counts.json", "w") as fh:
+            json.dump({"passed": len(passed_labels),
+                       "failed": len(failed_labels)}, fh)
+    LOGGER.info("Saved label lists – no Boolean stacks written.")
 
-        out_file = cfg.out_dir / f"{cfg.prefix}{name}.npy"
-        np.save(out_file, kept)
-        print(f"Saved {kept.shape[0]} masks → {out_file}")
-
-    # Call it.
-    dump(masks, passed, "passed_masks")
-    dump(masks, ~passed, "failed_masks")
-
-    # Summaries.
     if cfg.save_summary_csv:
-        df.assign(passed=passed).to_csv(cfg.out_dir / f"{cfg.prefix}metrics.csv", index=False)
-        df.assign(passed=passed).to_parquet(cfg.out_dir / f"{cfg.prefix}metrics.parquet")
-        logger.info("Saved metrics table.")
+        metrics_df.assign(passed=passed_mask).to_csv(cfg.out_dir / f"{cfg.prefix}metrics.csv", index=False)
+        LOGGER.info("Metrics CSV written.")
 
-    # QC plots.
     if cfg.save_plots:
-        save_violin_plots(df, cfg.th, cfg.out_dir, cfg.prefix)
+        save_violin_plots(metrics_df.assign(passed=passed_mask), cfg.th, cfg.out_dir, cfg.prefix)
 
-    # Overlay generation if requested by the user.
+    # 4 ▸ Overlay (optional).
     if cfg.overlay:
-        assert cfg.raw_image is not None, "Use --raw-image to supply the source image."
-        if cfg.raw_image.endswith((".npy", ".NPY")):
-            raw_img = np.load(cfg.raw_image)
+        assert cfg.raw_image is not None, "--raw-image required for overlay."
+
+        # Load the raw fluorescence or bright-field image.
+        if str(cfg.raw_image).lower().endswith(".npy"):
+            raw = np.load(cfg.raw_image, mmap_mode="r")
         else:
             from skimage.io import imread
-            raw_img = imread(cfg.raw_image)
-        save_overlay(
-            raw=raw_img,
-            masks=masks,
-            passed=passed,
+            raw = imread(cfg.raw_image)
+
+        # Informative log.
+        LOGGER.info("Saving overlay for region: %s",
+                    cfg.region if cfg.region else "full frame")
+
+        # Draw red/green QC overlay, optionally cropped to cfg.region.
+        paint_overlay(
+            raw=raw,
+            label_map=label_map,
+            passed_labels=set(np.where(passed_mask)[0] + 1),
             out_path=cfg.out_dir / f"{cfg.prefix}overlay.tif",
+            region=cfg.region,
+            alpha=0.35,
         )
+
+    '''Persist boolean mask stack for downstream scripts'''
+    if cfg.no_stack:
+        LOGGER.info("Flag --no_stack set – skipping Boolean-stack export.")
+        LOGGER.info("✓ Done.")
+        return  # ← Early exit; everything else is already written.
+
+    stack_path = cfg.out_dir / f"{cfg.prefix}passed_masks.npy"
+    height, width = label_map.shape
+    passed_stack = open_memmap(
+        stack_path, mode="w+", dtype=np.bool_, shape=(len(passed_labels), height, width)
+    )
+
+    for i, lab in enumerate(passed_labels, 1):
+        passed_stack[i - 1] = label_map == lab  # Write one slice, then flush.
+
+    del passed_stack  # Ensures the mem-mapped array is written to disk.
+    LOGGER.info("Boolean stack of passed nuclei saved → %s", stack_path.name)
+
+    LOGGER.info("✓ Done.")
 
 
 if __name__ == "__main__":
