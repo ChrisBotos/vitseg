@@ -5,18 +5,16 @@ Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 |
 
 Script Name: filter_masks.py.
 Description:
-    Drop‑in replacement for *filter_masks.py* that eliminates the per‑nucleus
-    full‑frame binary copies that previously caused >200GB peaks for large
-    label maps.  The new version works **directly on the label image**, streams
-    metrics in constant RAM, and writes the accepted / rejected nuclei to
-    memory‑mapped boolean stacks so that downstream scripts remain unchanged.
+    Memory-efficient filtering of segmentation masks based on morphological and intensity
+    metrics. This script eliminates the per‑nucleus full‑frame binary copies that
+    previously caused >200GB memory peaks for large label maps. The implementation works
+    **directly on the label image**, streams metrics in constant RAM, and writes the
+    accepted / rejected nuclei to memory‑mapped boolean stacks.
 
-Key Improvements:
+Key Features:
     • `np.load(..., mmap_mode="r")` ensures the label map is never duplicated.
     • Metrics computed via `skimage.measure.regionprops_table` on the label map
       (O(1) extra memory) instead of converting to a list of masks.
-    • `straight_fraction` is evaluated *per nucleus* in a for‑loop so only one
-      temporary mask is alive at any time.
     • Output boolean stacks are created as `np.memmap`, filled incrementally,
       and finally flushed to `.npy` – peak RAM is ≈ 2× the image size, no more.
     • Overlay generation colors each nucleus on‑the‑fly; no stack in memory.
@@ -31,7 +29,6 @@ Usage Example:
         --results-dir filtered_results \
         --output-prefix filtered_ \
         --min-pixels 20 --max-pixels 570 \
-        --max-straight-fraction 0.25 \
         --summary-csv --overlay --raw-image data/IRI_regist_cropped.tif
 
 Tests:
@@ -63,7 +60,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="[%(levelname)s] %(message)s",
 )
-LOGGER = logging.getLogger("filter‑masks‑memopt")
+LOGGER = logging.getLogger("filter‑masks")
 
 ###############################################################################
 # Dataclasses.

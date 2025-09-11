@@ -172,7 +172,7 @@ printf '\n========================================\n'
 ########################################
 if [[ "${RUN_FILTER_MASKS}" == "True" ]]; then
     printf '\n➤ Filtering segmentation masks …\n'
-    python code/filter_masks_memopt.py \
+    python code/filter_masks.py \
         --input             "${RAW_MASKS}" \
         --results-dir       "${FILTER_DIR}" \
         --output-prefix     "filtered_" \
