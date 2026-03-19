@@ -1,40 +1,94 @@
-.idea
+# ViT-on-Segmentation-Masks .gitignore.
 
-/venv310
-/venv311
-
-/ViT
-
-/valid_data
-
-/data/*
-!/data/.gitkeep
-
-# Results directory - ignore all contents except .gitkeep files
-/results/*
-!/results/.gitkeep
-!/masks/.gitkeep
-
-# Mask files in masks directory
-/masks/*
-!/masks/.gitkeep
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# IDE files
-.vscode/
+# IDE.
 .idea/
+.vscode/
+*.swp
+*.swo
 
-# OS files
+# Python bytecode (never track).
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments.
+venv*/
+.venv/
+ENV/
+env/
+
+# Testing.
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Type checking.
+.mypy_cache/
+
+# Jupyter.
+.ipynb_checkpoints/
+
+# OS junk.
 .DS_Store
 Thumbs.db
 
-# Temporary files
+# Data (keep structure, ignore contents).
+data/**/*
+!data/**/
+!data/**/.gitkeep
+
+# Results (keep structure, ignore contents).
+results/**/*
+!results/**/
+!results/**/.gitkeep
+
+# Masks (keep structure, ignore contents).
+masks/**/*
+!masks/**/
+!masks/**/.gitkeep
+
+# Comparison analysis outputs (keep structure, ignore contents).
+comparison_analysis/results/**/*
+!comparison_analysis/results/**/
+!comparison_analysis/results/**/.gitkeep
+
+comparison_analysis/visualizations/**/*
+!comparison_analysis/visualizations/**/
+!comparison_analysis/visualizations/**/.gitkeep
+
+comparison_analysis/reports/**/*
+!comparison_analysis/reports/**/
+!comparison_analysis/reports/**/.gitkeep
+
+# ViT model cache.
+/ViT
+
+# Validated data.
+/valid_data
+
+# Temporary files.
 *.tmp
 *.temp
 overlay.tif
+
+# Augment.
+.augment/
