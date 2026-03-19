@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 """
-Test script to verify that all packages are properly installed in venv310.
+Author: Christos Botos.
+Affiliation: Leiden University Medical Center.
+Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
+
+Script Name: test_venv310.py.
+Description:
+    Test script to verify that all packages are properly installed in venv310.
+
+Dependencies:
+    • Python >= 3.10.
+    • All packages from requirements.txt.
+
+Usage:
+    python test_venv310.py
 """
 
 import sys
@@ -128,10 +141,10 @@ if __name__ == "__main__":
     print(f"Python executable: {sys.executable}")
     print("="*60)
     
-    # Test imports
+    # Test imports.
     imports_ok = test_imports()
-    
-    # Test basic functionality
+
+    # Test basic functionality.
     functionality_ok = test_basic_functionality()
     
     print("\n" + "="*60)

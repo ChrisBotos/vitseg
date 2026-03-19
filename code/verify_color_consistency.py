@@ -1,9 +1,9 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: verify_color_consistency.py
+Script Name: verify_color_consistency.py.
 Description:
     Verify that colors used in PCA plots match colors used in overlays.
     Creates a reference chart showing the color mapping for each cluster.
@@ -14,15 +14,6 @@ Dependencies:
 
 Usage:
     python verify_color_consistency.py
-
-Key Features:
-    • Generates color reference chart for cluster visualization.
-    • Shows both hex colors (for PCA) and RGBA colors (for overlay).
-    • Validates color consistency between different visualizations.
-
-Notes:
-    • Run after clustering to verify color mapping is correct.
-    • Helps ensure PCA and overlay colors match properly.
 """
 import traceback
 import matplotlib.pyplot as plt

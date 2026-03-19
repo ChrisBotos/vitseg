@@ -45,37 +45,6 @@ Usage:
         --batch_size 512 \
         --model_name facebook/dino-vits16
 
-Arguments:
-    --image          Path to binary mask image (TIFF format).
-    --output         Output directory for features and coordinates.
-    --patch_size     Size of square tiles in pixels.
-    --stride         Stride between tiles (equals patch_size for non-overlapping).
-    --batch_size     Number of tiles to process per GPU batch.
-    --model_name     Hugging Face ViT model identifier.
-    --workers        Number of CPU workers for data loading.
-
-Inputs:
-    • Binary mask image (TIFF) with white pixels indicating nuclei regions.
-
-Outputs:
-    • features_<image_stem>.csv    Tile embeddings in CSV format.
-    • features_<image_stem>.npy    Tile embeddings in NumPy format.
-    • coords_<image_stem>.csv      Tile center coordinates.
-
-Key Features:
-    • Uniform spatial sampling across entire tissue section.
-    • Compatible with existing clustering pipeline infrastructure.
-    • Memory-efficient batch processing for large images.
-    • Consistent file naming convention for seamless integration.
-
-Notes:
-    • Tiling starts from top-left corner (0,0) and covers the entire image.
-    • Border tiles extending beyond image boundaries are padded with black pixels.
-    • Tiles containing only background pixels will still generate embeddings.
-    • This enables clustering algorithms to identify background vs. tissue regions.
-    • Complete edge coverage ensures no tissue regions are missed in analysis.
-    • Use this method when spatial organization analysis is more important than
-      individual cell morphology analysis.
 """
 
 import argparse
@@ -116,7 +85,7 @@ class UniformTileDataset(Dataset):
         """
         Initialize dataset with image and tiling parameters.
         
-        Parameters:
+        Args:
             image: PIL Image object (binary mask).
             patch_size: Size of square tiles in pixels.
             stride: Stride between tile centers in pixels.
@@ -188,7 +157,7 @@ class UniformTileDataset(Dataset):
         Handles border tiles by padding with black pixels when they extend
         beyond image boundaries.
 
-        Parameters:
+        Args:
             idx: Tile index.
 
         Returns:
@@ -226,7 +195,7 @@ class UniformTileDataset(Dataset):
         When tiles extend beyond image boundaries, this method creates a black
         tile of the correct size and pastes the available image portion onto it.
 
-        Parameters:
+        Args:
             left, top, right, bottom: Tile boundaries (may extend beyond image).
 
         Returns:
@@ -270,7 +239,7 @@ def extract_uniform_features(
     """
     Extract ViT features from uniform tiles across the entire image.
     
-    Parameters:
+    Args:
         image_path: Path to binary mask image.
         model: Pre-loaded ViT model.
         processor: ViT image processor for preprocessing.
@@ -497,7 +466,7 @@ def enhance_binary_image(image_array):
     """
     Apply morphological enhancement to binary mask for better ViT processing.
 
-    Parameters:
+    Args:
         image_array: NumPy array of binary mask.
 
     Returns:
@@ -541,7 +510,7 @@ def extract_multiscale_uniform_features(
     """
     Extract multi-scale ViT features from uniform tiles across the entire image.
 
-    Parameters:
+    Args:
         image_path: Path to binary mask image.
         model: Pre-loaded ViT model.
         processor: ViT image processor for preprocessing.

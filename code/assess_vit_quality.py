@@ -9,21 +9,6 @@ Description:
     Evaluates clustering performance across multiple patch sizes and identifies potential
     artifacts such as border effects, spatial incoherence, and poor cluster separation.
 
-    Key assessment components for bioinformatician users:
-        • **Border effect detection** – Identifies inappropriate grouping of edge-cropped
-          masks that may indicate poor feature extraction near image boundaries.
-        • **Multi-scale comparison** – Compares clustering quality across different patch
-          sizes (16px, 32px, 64px) to determine optimal scale for tissue analysis.
-        • **Spatial coherence analysis** – Measures how well clusters preserve spatial
-          relationships, crucial for biological interpretation of tissue organization.
-        • **Cluster quality metrics** – Comprehensive evaluation using silhouette analysis,
-          Calinski-Harabasz scores, and Davies-Bouldin indices for robust assessment.
-
-    Scientific context:
-        This assessment helps researchers select optimal ViT configurations for tissue
-        analysis, ensuring that clustering results reflect genuine biological patterns
-        rather than technical artifacts from image processing or feature extraction.
-
 Dependencies:
     • Python >= 3.10.
     • numpy, pandas, scikit-learn, matplotlib, seaborn, scipy.
@@ -36,37 +21,6 @@ Usage:
         --output_dir quality_assessment \
         --patch_sizes 32 64 \
         --border_threshold 10
-
-Arguments:
-    --results_dir      Directory containing patch clustering results.
-    --image_path       Path to original image for border detection.
-    --output_dir       Output directory for quality assessment reports.
-    --patch_sizes      List of patch sizes to evaluate.
-    --border_threshold Pixel distance from edge to consider as border region.
-
-Inputs:
-    • patch_clusters.csv files from different patch size experiments.
-    • Original image file for dimension analysis.
-    • Coordinate and feature files for comprehensive evaluation.
-
-Outputs:
-    • quality_assessment_report.csv    Comprehensive quality metrics comparison.
-    • border_effect_analysis.png       Visualization of border clustering effects.
-    • spatial_coherence_plots.png      Spatial coherence analysis across scales.
-    • cluster_quality_comparison.png   Multi-metric quality comparison.
-    • recommendations.txt              Optimal configuration recommendations.
-
-Key Features:
-    • Multi-scale patch size comparison with statistical significance testing.
-    • Border effect detection and quantification for edge artifact identification.
-    • Spatial coherence analysis with nearest neighbor purity assessment.
-    • Comprehensive cluster quality evaluation with biological relevance metrics.
-    • Automated recommendation system for optimal ViT configuration selection.
-
-Notes:
-    • Designed to work with existing ViT clustering pipeline outputs.
-    • Includes extensive validation and quality control measures.
-    • Generates publication-quality visualizations and detailed analysis reports.
 """
 import argparse
 import traceback
@@ -94,21 +48,19 @@ console = Console()
 
 
 class ViTQualityAssessor:
-    """
-    Comprehensive quality assessment for Vision Transformer clustering results.
-    
+    """Comprehensive quality assessment for Vision Transformer clustering results.
+
     This class evaluates ViT clustering performance across multiple dimensions,
     helping researchers identify optimal configurations and detect potential
     artifacts that could compromise biological interpretation.
     """
-    
+
     def __init__(self, image_path: Path, border_threshold: int = 50):
-        """
-        Initialize quality assessor with image dimensions and border parameters.
-        
+        """Initialize quality assessor with image dimensions and border parameters.
+
         Args:
-            image_path: Path to original image for dimension analysis.
-            border_threshold: Distance from edge to consider as border region.
+            image_path (Path): Path to original image for dimension analysis.
+            border_threshold (int): Distance from edge to consider as border region.
         """
         self.image_path = image_path
         self.border_threshold = border_threshold
@@ -120,7 +72,11 @@ class ViTQualityAssessor:
         console.print(f"[blue]ℹ[/blue] Border threshold: {border_threshold}px")
     
     def _get_image_dimensions(self) -> Tuple[int, int]:
-        """Extract image dimensions from file."""
+        """Extract image dimensions from the file.
+
+        Returns:
+            Tuple[int, int]: Image width and height.
+        """
         try:
             with Image.open(self.image_path) as img:
                 return img.size  # (width, height)
@@ -131,8 +87,7 @@ class ViTQualityAssessor:
     
     def detect_border_effects(self, coords_df: pd.DataFrame, labels: np.ndarray,
                             patch_size: int) -> Dict[str, float]:
-        """
-        Analyze border clustering quality and edge artifact detection.
+        """Analyze border clustering quality and edge artifact detection.
 
         This analysis evaluates how well the ViT identifies and groups patches
         that are affected by image boundaries. Good border clustering indicates
@@ -140,12 +95,12 @@ class ViTQualityAssessor:
         edge-cropped, which is valuable for quality control and artifact detection.
 
         Args:
-            coords_df: DataFrame with x_center, y_center coordinates.
-            labels: Cluster labels for each patch.
-            patch_size: Size of patches used for analysis.
+            coords_df (pd.DataFrame): DataFrame with x_center, y_center coordinates.
+            labels (np.ndarray): Cluster labels for each patch.
+            patch_size (int): Size of patches used for analysis.
 
         Returns:
-            Dictionary containing border clustering quality metrics.
+            Dict[str, float]: Dictionary containing border clustering quality metrics.
         """
         console.print(f"[cyan]Analyzing border effects for {patch_size}px patches...[/cyan]")
         
@@ -208,19 +163,18 @@ class ViTQualityAssessor:
         return border_metrics
     
     def compute_spatial_coherence(self, coords_df: pd.DataFrame, labels: np.ndarray) -> Dict[str, float]:
-        """
-        Compute spatial coherence metrics for clustering results.
-        
+        """Compute spatial coherence metrics for clustering results.
+
         Spatial coherence measures how well clusters preserve spatial relationships,
         which is crucial for biological interpretation as cells of similar types
         often cluster spatially in tissue samples.
-        
+
         Args:
-            coords_df: DataFrame with spatial coordinates.
-            labels: Cluster labels.
-            
+            coords_df (pd.DataFrame): DataFrame with spatial coordinates.
+            labels (np.ndarray): Cluster labels.
+
         Returns:
-            Dictionary of spatial coherence metrics.
+            Dict[str, float]: Dictionary of spatial coherence metrics.
         """
         console.print("[cyan]Computing spatial coherence metrics...[/cyan]")
         
@@ -272,19 +226,18 @@ class ViTQualityAssessor:
         return coherence_metrics
 
     def compute_cluster_quality_metrics(self, features: np.ndarray, labels: np.ndarray) -> Dict[str, float]:
-        """
-        Compute comprehensive cluster quality metrics.
+        """Compute comprehensive cluster quality metrics.
 
         This function evaluates clustering quality using multiple established metrics,
         providing a robust assessment of how well the ViT features separate into
         distinct, meaningful clusters for biological analysis.
 
         Args:
-            features: Feature matrix [n_samples, n_features].
-            labels: Cluster labels [n_samples].
+            features (np.ndarray): Feature matrix [n_samples, n_features].
+            labels (np.ndarray): Cluster labels [n_samples].
 
         Returns:
-            Dictionary of cluster quality metrics.
+            Dict[str, float]: Dictionary of cluster quality metrics.
         """
         console.print("[cyan]Computing cluster quality metrics...[/cyan]")
 
@@ -329,19 +282,18 @@ class ViTQualityAssessor:
         return quality_metrics
 
     def assess_patch_size_configuration(self, results_dir: Path, patch_sizes: List[int]) -> pd.DataFrame:
-        """
-        Comprehensive assessment of different patch size configurations.
+        """Comprehensive assessment of different patch size configurations.
 
         This function evaluates clustering results across different patch sizes
         and combinations, helping researchers identify the optimal configuration
         for their specific tissue analysis requirements.
 
         Args:
-            results_dir: Directory containing clustering results.
-            patch_sizes: List of patch sizes to evaluate.
+            results_dir (Path): Directory containing clustering results.
+            patch_sizes (List[int]): List of patch sizes to evaluate.
 
         Returns:
-            DataFrame with comprehensive quality assessment results.
+            pd.DataFrame: DataFrame with comprehensive quality assessment results.
         """
         console.print(f"[1m[cyan]Assessing patch size configurations...[/cyan][/1m")
 
@@ -396,14 +348,13 @@ class ViTQualityAssessor:
         return results_df
 
     def _analyze_single_configuration(self, config_dir: Path) -> Optional[Dict]:
-        """
-        Analyze a single patch size configuration.
+        """Analyze a single patch size configuration.
 
         Args:
-            config_dir: Directory containing configuration results.
+            config_dir (Path): Directory containing configuration results.
 
         Returns:
-            Dictionary with analysis results or None if analysis fails.
+            Optional[Dict]: Dictionary with analysis results or None if analysis fails.
         """
         # Check for required files.
         patch_clusters_file = config_dir / 'patch_clusters.csv'
@@ -452,14 +403,13 @@ class ViTQualityAssessor:
         return result
 
     def _extract_patch_size_info(self, config_name: str) -> Dict[str, Union[int, List[int]]]:
-        """
-        Extract patch size information from configuration directory name.
+        """Extract patch size information from configuration directory name.
 
         Args:
-            config_name: Configuration directory name.
+            config_name (str): Configuration directory name.
 
         Returns:
-            Dictionary with patch size information.
+            Dict[str, Union[int, List[int]]]: Dictionary with patch size information.
         """
         info = {'primary_size': 32, 'sizes': [32], 'is_combination': False}
 
@@ -489,16 +439,15 @@ class ViTQualityAssessor:
         return info
 
     def generate_quality_report(self, results_df: pd.DataFrame, output_dir: Path) -> None:
-        """
-        Generate comprehensive quality assessment report with recommendations.
+        """Generate comprehensive quality assessment report with recommendations.
 
         This function creates detailed visualizations and analysis reports to help
         researchers understand the performance characteristics of different ViT
         configurations and select the optimal setup for their analysis.
 
         Args:
-            results_df: DataFrame with assessment results.
-            output_dir: Directory for output files.
+            results_df (pd.DataFrame): DataFrame with assessment results.
+            output_dir (Path): Directory for output files.
         """
         console.print(f"[1m[cyan]Generating quality assessment report...[/cyan][/1m")
 
@@ -530,7 +479,12 @@ class ViTQualityAssessor:
         console.print(f"[green]✓[/green] Quality assessment report saved to: {output_dir}")
 
     def _create_quality_visualizations(self, results_df: pd.DataFrame, output_dir: Path) -> None:
-        """Create comprehensive quality visualization plots."""
+        """Create comprehensive quality visualization plots.
+
+        Args:
+            results_df (pd.DataFrame): DataFrame with assessment results.
+            output_dir (Path): Directory for output visualization files.
+        """
         console.print("[cyan]Creating quality visualizations...[/cyan]")
 
         # Set up plotting style.
@@ -642,15 +596,17 @@ class ViTQualityAssessor:
         console.print("[green]✓[/green] Visualizations created successfully")
 
     def _generate_recommendations(self, results_df: pd.DataFrame) -> Dict[str, List[str]]:
-        """
-        Generate intelligent recommendations based on quality assessment results.
+        """Generate intelligent recommendations based on quality assessment results.
 
         This function analyzes the assessment results to provide actionable
         recommendations for optimal ViT configuration selection based on
         multiple quality criteria and biological relevance.
 
+        Args:
+            results_df (pd.DataFrame): DataFrame with assessment results.
+
         Returns:
-            Dictionary with categorized recommendations.
+            Dict[str, List[str]]: Dictionary with categorized recommendations.
         """
         recommendations = {
             'optimal_configuration': [],
@@ -830,7 +786,12 @@ class ViTQualityAssessor:
         return recommendations
 
     def _print_summary_table(self, results_df: pd.DataFrame, recommendations: Dict[str, List[str]]) -> None:
-        """Print a formatted summary table of key findings."""
+        """Print a formatted summary table of key findings.
+
+        Args:
+            results_df (pd.DataFrame): DataFrame with assessment results.
+            recommendations (Dict[str, List[str]]): Categorized recommendations.
+        """
         console.print("\n" + "=" * 80)
         console.print("[1m[cyan]ViT QUALITY ASSESSMENT SUMMARY[/cyan][/1m")
         console.print("=" * 80)
@@ -865,8 +826,7 @@ class ViTQualityAssessor:
 
 
 def main():
-    """
-    Main entry point for ViT quality assessment.
+    """Main entry point for ViT quality assessment.
 
     Orchestrates comprehensive quality assessment across multiple patch size
     configurations, providing detailed analysis and recommendations for

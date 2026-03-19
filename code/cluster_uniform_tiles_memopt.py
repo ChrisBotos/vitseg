@@ -37,41 +37,6 @@ Usage:
         --auto-k silhouette \
         --outdir results
 
-Arguments:
-    --image            Path to binary mask image (TIFF format).
-    --coords           CSV file with tile center coordinates.
-    --features_npy     NumPy array of tile feature embeddings.
-    --features_csv     CSV fallback for features if NPY not available.
-    --clusters         Initial number of clusters for K-means.
-    --auto-k           Auto-K selection method ('none', 'silhouette', 'dbi').
-    --batch-size       Batch size for streaming processing.
-    --outdir           Output directory for results.
-    --seed             Random seed for reproducibility.
-    --region           Crop region for overlay (xmin xmax ymin ymax).
-    --downsample       Downsampling factor for overlay generation.
-
-Inputs:
-    • features.npy     Memory-mapped tile feature array (n_tiles, n_features).
-    • coords.csv       Tile center coordinates (x_center, y_center).
-    • binary_mask.tif  Binary mask image for overlay generation.
-
-Outputs:
-    • tile_clusters.csv        Cluster assignments per tile.
-    • kmeans_model.joblib      Trained MiniBatchKMeans model.
-    • scaler.joblib            StandardScaler for features.
-    • overlay_clusters.tif     Tile cluster overlay on binary image.
-    • pca_clusters.png         PCA scatter plot of tile clusters.
-
-Key Features:
-    • Streaming algorithms for memory efficiency with large tile datasets.
-    • High-contrast color palettes optimized for scientific visualization.
-    • Tile-based spatial overlay generation without segmentation masks.
-    • Publication-quality PCA plots with enhanced readability.
-
-Notes:
-    • Each tile is treated as an independent sample for clustering.
-    • Cluster assignments are mapped back to tile positions for spatial analysis.
-    • Background tiles (containing no nuclei) will still be clustered and visualized.
 """
 
 import argparse
@@ -134,12 +99,12 @@ except ImportError:
 def _slice_region(height: int, width: int, region: Tuple[float, float, float, float]) -> Tuple[int, int, int, int]:
     """
     Convert fractional region coordinates to pixel coordinates.
-    
-    Parameters:
+
+    Args:
         height: Image height in pixels.
         width: Image width in pixels.
         region: Fractional coordinates (xmin, xmax, ymin, ymax).
-        
+
     Returns:
         Pixel coordinates (x0, x1, y0, y1).
     """
@@ -178,8 +143,8 @@ def save_tile_overlay(
 ) -> None:
     """
     Create RGBA overlay of tile clusters on binary mask image.
-    
-    Parameters:
+
+    Args:
         image_path: Path to binary mask image.
         coords_df: DataFrame with tile coordinates (x_center, y_center).
         cluster_ids: Array of cluster assignments for each tile.
@@ -257,7 +222,7 @@ def choose_optimal_k(features, k_max, criterion, sample_size=5000):
         
         if criterion == 'silhouette':
             score = silhouette_score(sample, labels)
-        else:  # davies_bouldin
+        else:  # davies_bouldin.
             score = davies_bouldin_score(sample, labels)
             
         scores.append((k, score))

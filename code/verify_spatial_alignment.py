@@ -8,10 +8,6 @@ Description:
     Spatial alignment verification script for ViT-derived clusters and spatial
     transcriptomics data. Creates overlay visualizations to verify coordinate
     system alignment before running comprehensive comparison analysis.
-    
-    This script provides bioinformaticians with visual confirmation that both
-    datasets are properly aligned spatially, identifying any coordinate system
-    mismatches or transformation issues that could affect statistical analysis.
 
 Dependencies:
     • Python >= 3.10.
@@ -26,39 +22,6 @@ Usage:
         --output results/spatial_alignment_verification \
         --samples IRI1 IRI2 IRI3 \
         --cluster_column figure_idents
-
-Arguments:
-    --vit_clusters     Path to ViT cluster assignments CSV.
-    --spatial_data     Path to spatial metadata CSV.
-    --output           Output directory for verification results.
-    --samples          Sample names to include.
-    --cluster_column   Column name for spatial clusters.
-    --flip_y           Apply Y-coordinate flipping for alignment.
-    --alpha            Transparency for overlay plots (default: 0.6).
-
-Inputs:
-    • spot_clusters.csv        ViT cluster assignments with coordinates.
-    • metadata_complete.csv    Spatial metadata with original clusters.
-
-Outputs:
-    • alignment_verification.png    Side-by-side comparison plots.
-    • overlay_visualization.png     Superimposed overlay plots.
-    • coordinate_diagnostics.txt    Coordinate system analysis.
-    • alignment_statistics.json     Quantitative alignment metrics.
-
-Key Features:
-    • Coordinate system alignment verification.
-    • Visual overlay generation with semi-transparent layers.
-    • Coordinate range and overlap statistics.
-    • Spatial correlation analysis.
-    • Publication-quality output with consistent styling.
-    • Comprehensive diagnostic reporting.
-
-Notes:
-    • Based on overlay_masks.py for efficient large-scale visualization.
-    • Handles coordinate system transformations and flipping.
-    • Provides quantitative metrics for alignment assessment.
-    • Essential verification step before statistical comparison analysis.
 """
 import argparse
 import json

@@ -1,9 +1,9 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: color_config.py
+Script Name: color_config.py.
 Description:
     Configuration system for color palette management in scientific visualization.
     Provides centralized control over color generation parameters and custom palettes.
@@ -18,30 +18,6 @@ Usage:
     from color_config import ColorConfig, load_color_config
     config = load_color_config("config.json")
     colors = config.generate_palette(n=10)
-
-Arguments:
-    Configuration files should be JSON format with color parameters.
-
-Inputs:
-    • JSON configuration files with color settings.
-    • Custom color palette specifications.
-
-Outputs:
-    • ColorConfig objects with validated parameters.
-    • Generated color palettes for visualization.
-
-Key Features:
-    • Centralized color configuration management.
-    • Support for custom color palettes via hex codes or RGB values.
-    • Automatic validation of color parameters and formats.
-    • Fallback to algorithmic generation when custom palettes are insufficient.
-    • Integration with existing project configuration patterns.
-
-Notes:
-    • All parameter names follow lowercase conventions for consistency.
-    • Custom colors can be specified as hex codes (#FF0000) or RGB tuples.
-    • Configuration files are optional - defaults provide good scientific visualization.
-    • Colors are optimized for both light and dark microscopy backgrounds.
 """
 import traceback
 import json
@@ -281,14 +257,14 @@ def create_example_config() -> ColorConfig:
     configure custom color palettes for their specific needs.
     """
     example_colors = [
-        "#FF0000",  # Strong red
-        "#00FF00",  # Neon green
-        "#0080FF",  # Bright blue
-        "#FF00FF",  # Magenta
-        "#FF8C00",  # Deep orange
-        "#00FFFF",  # Cyan
-        "#FFFF00",  # Yellow
-        "#8000FF",  # Purple
+        "#FF0000",  # Strong red.
+        "#00FF00",  # Neon green.
+        "#0080FF",  # Bright blue.
+        "#FF00FF",  # Magenta.
+        "#FF8C00",  # Deep orange.
+        "#00FFFF",  # Cyan.
+        "#FFFF00",  # Yellow.
+        "#8000FF",  # Purple.
     ]
     
     return ColorConfig(

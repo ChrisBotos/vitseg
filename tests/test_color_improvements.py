@@ -1,9 +1,9 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: test_color_improvements.py
+Script Name: test_color_improvements.py.
 Description:
     Test script to validate the improved color generation and overlay functionality.
     Compares old vs new color generation methods and validates contrast ratios.
@@ -14,16 +14,6 @@ Dependencies:
 
 Usage:
     python test_color_improvements.py
-
-Key Features:
-    • Tests color generation with various parameters.
-    • Validates contrast ratios meet WCAG standards.
-    • Checks overlay functionality with proper RGBA handling.
-    • Generates comparison visualizations.
-
-Notes:
-    • Run this after implementing the improved color generation.
-    • Validates both PCA plot colors and overlay colors work correctly.
 """
 import traceback
 import numpy as np
@@ -44,7 +34,7 @@ def test_color_contrast_ratios():
     # Test dark background (typical for microscopy).
     dark_colors = generate_color_palette(n=10, background="dark", contrast_ratio=4.5)
     bg_dark = (0, 0, 0)
-    
+
     for i, (r, g, b, a) in dark_colors.items():
         contrast = calculate_contrast_ratio((r, g, b), bg_dark)
         assert contrast >= 4.4, f"Dark bg color {i} contrast {contrast:.2f} below threshold"
@@ -53,7 +43,7 @@ def test_color_contrast_ratios():
     # Test light background.
     light_colors = generate_color_palette(n=6, background="light", contrast_ratio=3.0)
     bg_light = (255, 255, 255)
-    
+
     for i, (r, g, b, a) in light_colors.items():
         contrast = calculate_contrast_ratio((r, g, b), bg_light)
         assert contrast >= 2.9, f"Light bg color {i} contrast {contrast:.2f} below threshold"
@@ -71,9 +61,9 @@ def test_hex_color_conversion():
     
     colors = generate_color_palette(n=5, background="dark")
     hex_colors = colors_to_hex_list(colors)
-    
+
     assert len(hex_colors) == 5, f"Expected 5 hex colors, got {len(hex_colors)}"
-    
+
     for i, hex_color in enumerate(hex_colors):
         assert hex_color.startswith('#'), f"Color {i} not in hex format: {hex_color}"
         assert len(hex_color) == 7, f"Color {i} wrong hex length: {hex_color}"
@@ -194,7 +184,7 @@ def test_overlay_rgba_handling():
     print("\nTesting overlay RGBA handling...")
 
     # Create test data with new transparency settings.
-    test_colors = generate_color_palette(n=3, background="light", alpha=89)  # 0.35 * 255
+    test_colors = generate_color_palette(n=3, background="light", alpha=89)  # 0.35 * 255.
     
     # Simulate overlay color array creation (as done in save_overlay).
     k = len(test_colors)

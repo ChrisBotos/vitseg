@@ -1,28 +1,20 @@
 #!/usr/bin/env python3
 """
-###############################################################################
-AUTOMATED PYTHON 3.10 VIRTUAL ENVIRONMENT SETUP WITH RETRY LOGIC
-###############################################################################
+Author: Christos Botos.
+Affiliation: Leiden University Medical Center.
+Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Author: Christos Botos
-Description: Automated script to create and configure a Python 3.10 virtual 
-             environment with retry logic for robust package installation.
-Dependencies: Python 3.10, pip, venv module
-Usage: python setup_venv310.py
-Arguments: None
-Inputs: requirements.txt file in the same directory
-Outputs: venv310/ directory with fully configured virtual environment
-Key Features:
-    - Automated retry loop for failed installations
-    - Complete environment cleanup and recreation on failures
-    - Comprehensive logging and status reporting
-    - Package version verification
-    - Cross-platform compatibility (Windows/Linux/macOS)
-Notes: 
-    - Requires Python 3.10 to be installed and accessible
-    - Will completely remove and recreate venv310 on each retry
-    - Continues until successful installation or maximum retries reached
-###############################################################################
+Script Name: setup_venv310.py.
+Description:
+    Automated script to create and configure a Python 3.10 virtual environment
+    with retry logic for robust package installation.
+
+Dependencies:
+    • Python 3.10.
+    • pip, venv module.
+
+Usage:
+    python setup_venv310.py
 """
 
 import os
@@ -36,7 +28,7 @@ from pathlib import Path
 # Configuration constants.
 VENV_NAME = "venv310"
 MAX_RETRIES = 1
-RETRY_DELAY = 2  # seconds between retries
+RETRY_DELAY = 2  # Seconds between retries.
 REQUIREMENTS_FILE = "requirements.txt"
 
 def print_header(title):
@@ -65,7 +57,7 @@ def check_python310():
                 version_info = result.stdout.strip()
                 print_status(f"Found Python: {version_info}")
                 
-                # Check if it's Python 3.10.x
+                # Check if it's Python 3.10.x.
                 if "Python 3.10" in version_info:
                     print_status(f"✓ Python 3.10 confirmed with command: {cmd}")
                     return cmd
@@ -140,7 +132,7 @@ def upgrade_pip():
     """Upgrade pip to the latest version in the virtual environment."""
     print_status("Upgrading pip to latest version...")
 
-    # Use the Python executable from the venv to upgrade pip (Windows requirement)
+    # Use the Python executable from the venv to upgrade pip (Windows requirement).
     python_cmd = get_python_command()
 
     try:
@@ -172,7 +164,7 @@ def install_requirements():
     try:
         # Install with verbose output and timeout.
         result = subprocess.run([pip_cmd, "install", "-r", REQUIREMENTS_FILE, "-v"], 
-                              capture_output=True, text=True, timeout=1800)  # 30 minutes timeout
+                              capture_output=True, text=True, timeout=1800)  # 30 minutes timeout.
         
         if result.returncode == 0:
             print_status("✓ Successfully installed all packages")

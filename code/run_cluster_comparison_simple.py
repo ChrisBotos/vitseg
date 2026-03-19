@@ -1,17 +1,15 @@
-#!/usr/bin/env python3
 """
-Simple Cluster Comparison Analysis
+Author: Christos Botos.
+Affiliation: Leiden University Medical Center.
+Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Author: Christos Botos
-Affiliation: Leiden University Medical Center
-Contact: botoschristos@gmail.com
-
+Script Name: run_cluster_comparison_simple.py.
 Description:
-    This script runs a simplified cluster comparison analysis between ViT-derived
-    clusters and spatial transcriptomics clusters, avoiding Unicode encoding issues
-    on Windows systems.
+    Runs a simplified cluster comparison analysis between ViT-derived clusters
+    and spatial transcriptomics clusters, avoiding Unicode encoding issues on
+    Windows systems.
 
-Requirements:
+Dependencies:
     • Python >= 3.10.
     • pandas, numpy, matplotlib, seaborn, scikit-learn.
 
@@ -22,17 +20,6 @@ Usage:
         --output results/simple_cluster_comparison \
         --samples IRI1 IRI2 IRI3 \
         --cluster_column figure_idents
-
-Key Features:
-    • Calculates Adjusted Rand Index (ARI) and Normalized Mutual Information (NMI).
-    • Creates confusion matrices and alignment visualizations.
-    • Generates comprehensive statistical reports.
-    • Avoids Unicode characters for Windows compatibility.
-
-Notes:
-    • Uses ASCII characters instead of Unicode symbols.
-    • Provides the same statistical rigor as the full analysis framework.
-    • Results are saved in CSV and PNG formats for easy interpretation.
 """
 import argparse
 import pandas as pd
@@ -336,6 +323,7 @@ def save_results(metrics: dict, merged_data: pd.DataFrame, output_dir: Path):
 
 
 def main():
+    """Main execution function."""
     parser = argparse.ArgumentParser(description="Simple cluster comparison analysis")
     parser.add_argument("--vit_clusters", type=Path, required=True,
                        help="Path to ViT cluster CSV file")

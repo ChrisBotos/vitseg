@@ -9,21 +9,6 @@ Description:
     Provides detailed performance metrics, feature quality assessment, and biological
     relevance analysis for enhanced ViT implementations.
 
-    Key analysis components for bioinformatician users:
-        • **Feature quality assessment** – Evaluates feature discriminability,
-          dimensionality effectiveness, and information content preservation.
-        • **Clustering performance comparison** – Compares old vs new clustering
-          results using multiple evaluation metrics and stability analysis.
-        • **Biological relevance metrics** – Assesses spatial coherence, cell
-          type separation, and tissue organization preservation.
-        • **Computational efficiency analysis** – Measures processing time,
-          memory usage, and scalability improvements.
-
-    Scientific context:
-        This analysis helps researchers validate that ViT improvements actually
-        enhance biological signal detection and cell type classification accuracy,
-        crucial for reliable downstream analysis in tissue studies.
-
 Dependencies:
     • Python >= 3.10.
     • numpy, pandas, scikit-learn, matplotlib, seaborn.
@@ -37,18 +22,6 @@ Usage:
         --old_clusters old_clusters.csv \
         --new_clusters new_clusters.csv \
         --outdir analysis_results
-
-Key Features:
-    • Comprehensive feature quality metrics.
-    • Statistical significance testing for improvements.
-    • Biological relevance assessment.
-    • Publication-quality comparison visualizations.
-    • Detailed performance reports.
-
-Notes:
-    • Designed to work with both original and enhanced ViT outputs.
-    • Includes extensive statistical validation.
-    • Generates detailed reports for method validation.
 """
 import argparse
 import traceback
@@ -74,9 +47,8 @@ from sklearn.neighbors import NearestNeighbors
 
 
 class ViTImprovementAnalyzer:
-    """
-    Comprehensive analyzer for ViT clustering improvements.
-    
+    """Comprehensive analyzer for ViT clustering improvements.
+
     This class provides detailed analysis of feature quality, clustering
     performance, and biological relevance to validate the effectiveness
     of ViT enhancements for biological image analysis.
@@ -85,20 +57,19 @@ class ViTImprovementAnalyzer:
     def __init__(self):
         self.results = {}
         
-    def analyze_feature_quality(self, old_features: np.ndarray, 
+    def analyze_feature_quality(self, old_features: np.ndarray,
                                new_features: np.ndarray) -> Dict[str, float]:
-        """
-        Analyze and compare feature quality between old and new implementations.
-        
+        """Analyze and compare feature quality between old and new implementations.
+
         This analysis evaluates feature discriminability, information content,
         and dimensionality effectiveness to validate improvements.
-        
+
         Args:
-            old_features: Original ViT features [n_samples, n_features].
-            new_features: Enhanced ViT features [n_samples, n_features].
-            
+            old_features (np.ndarray): Original ViT features [n_samples, n_features].
+            new_features (np.ndarray): Enhanced ViT features [n_samples, n_features].
+
         Returns:
-            Dictionary of feature quality metrics.
+            Dict[str, float]: Dictionary of feature quality metrics.
         """
         print("DEBUG: Analyzing feature quality...")
         
@@ -166,20 +137,19 @@ class ViTImprovementAnalyzer:
     
     def compare_clustering_performance(self, old_features: np.ndarray, new_features: np.ndarray,
                                      old_labels: np.ndarray, new_labels: np.ndarray) -> Dict[str, float]:
-        """
-        Compare clustering performance between old and new implementations.
-        
+        """Compare clustering performance between old and new implementations.
+
         This analysis evaluates clustering quality improvements using multiple
         metrics to validate the biological significance of enhancements.
-        
+
         Args:
-            old_features: Original ViT features.
-            new_features: Enhanced ViT features.
-            old_labels: Original cluster labels.
-            new_labels: Enhanced cluster labels.
-            
+            old_features (np.ndarray): Original ViT features.
+            new_features (np.ndarray): Enhanced ViT features.
+            old_labels (np.ndarray): Original cluster labels.
+            new_labels (np.ndarray): Enhanced cluster labels.
+
         Returns:
-            Dictionary of clustering performance metrics.
+            Dict[str, float]: Dictionary of clustering performance metrics.
         """
         print("DEBUG: Comparing clustering performance...")
         
@@ -233,21 +203,20 @@ class ViTImprovementAnalyzer:
         
         return metrics
     
-    def analyze_spatial_coherence(self, coords: np.ndarray, old_labels: np.ndarray, 
+    def analyze_spatial_coherence(self, coords: np.ndarray, old_labels: np.ndarray,
                                 new_labels: np.ndarray) -> Dict[str, float]:
-        """
-        Analyze spatial coherence of clustering results.
-        
+        """Analyze spatial coherence of clustering results.
+
         This analysis evaluates how well clusters preserve spatial relationships,
         which is crucial for biological interpretation of tissue organization.
-        
+
         Args:
-            coords: Spatial coordinates [n_samples, 2].
-            old_labels: Original cluster labels.
-            new_labels: Enhanced cluster labels.
-            
+            coords (np.ndarray): Spatial coordinates [n_samples, 2].
+            old_labels (np.ndarray): Original cluster labels.
+            new_labels (np.ndarray): Enhanced cluster labels.
+
         Returns:
-            Dictionary of spatial coherence metrics.
+            Dict[str, float]: Dictionary of spatial coherence metrics.
         """
         print("DEBUG: Analyzing spatial coherence...")
         
@@ -302,21 +271,20 @@ class ViTImprovementAnalyzer:
         return metrics
     
     def create_comparison_visualizations(self, old_features: np.ndarray, new_features: np.ndarray,
-                                       coords: np.ndarray, old_labels: np.ndarray, 
+                                       coords: np.ndarray, old_labels: np.ndarray,
                                        new_labels: np.ndarray, output_dir: Path) -> None:
-        """
-        Create comprehensive comparison visualizations.
-        
+        """Create comprehensive comparison visualizations.
+
         This function generates publication-quality visualizations comparing
         old and new ViT implementations across multiple dimensions.
-        
+
         Args:
-            old_features: Original ViT features.
-            new_features: Enhanced ViT features.
-            coords: Spatial coordinates.
-            old_labels: Original cluster labels.
-            new_labels: Enhanced cluster labels.
-            output_dir: Output directory for visualizations.
+            old_features (np.ndarray): Original ViT features.
+            new_features (np.ndarray): Enhanced ViT features.
+            coords (np.ndarray): Spatial coordinates.
+            old_labels (np.ndarray): Original cluster labels.
+            new_labels (np.ndarray): Enhanced cluster labels.
+            output_dir (Path): Output directory for visualizations.
         """
         print("DEBUG: Creating comparison visualizations...")
         
@@ -371,15 +339,14 @@ class ViTImprovementAnalyzer:
         print(f"DEBUG: Comparison visualizations saved to {output_dir}")
     
     def generate_improvement_report(self, all_metrics: Dict[str, Dict], output_dir: Path) -> None:
-        """
-        Generate comprehensive improvement report.
-        
+        """Generate comprehensive improvement report.
+
         This function creates a detailed report summarizing all improvements
         and their statistical significance for method validation.
-        
+
         Args:
-            all_metrics: Dictionary containing all analysis metrics.
-            output_dir: Output directory for the report.
+            all_metrics (Dict[str, Dict]): Dictionary containing all analysis metrics.
+            output_dir (Path): Output directory for the report.
         """
         print("DEBUG: Generating improvement report...")
         
@@ -435,8 +402,7 @@ class ViTImprovementAnalyzer:
 
 
 def main():
-    """
-    Main entry point for ViT improvement analysis.
+    """Main entry point for ViT improvement analysis.
 
     Orchestrates comprehensive analysis comparing old and new ViT implementations
     across feature quality, clustering performance, and biological relevance.

@@ -9,10 +9,6 @@ Description:
     between ViT-derived clusters and spatial spot clusters. Implements rigorous
     statistical methods including ARI, NMI, silhouette analysis, and spatial
     correlation metrics for quantitative cluster comparison.
-    
-    This module provides bioinformaticians with robust tools to assess whether
-    ViT-based morphological clustering captures meaningful spatial organization
-    patterns in kidney tissue samples.
 
 Dependencies:
     • Python >= 3.10.
@@ -27,36 +23,6 @@ Usage:
         --output comparison_analysis/results/metrics/ \
         --samples IRI1 IRI2 IRI3 \
         --cluster_column figure_idents
-
-Arguments:
-    --vit_data         Path to ViT-derived cluster assignments CSV.
-    --spatial_data     Path to spatial metadata with original clusters.
-    --output           Output directory for metrics results.
-    --samples          Sample names to include in analysis.
-    --cluster_column   Column name for spatial clusters (figure_idents/banksy).
-
-Inputs:
-    • spot_clusters.csv        ViT cluster assignments with coordinates.
-    • metadata_complete.csv    Spatial metadata with original clusters.
-
-Outputs:
-    • alignment_metrics.json   Comprehensive alignment statistics.
-    • silhouette_analysis.csv  Detailed silhouette scores.
-    • confusion_matrix.csv     Cluster transition matrix.
-    • metrics_summary.txt      Human-readable summary report.
-
-Key Features:
-    • Adjusted Rand Index (ARI) for cluster agreement assessment.
-    • Normalized Mutual Information (NMI) for information overlap.
-    • Comprehensive silhouette analysis for cluster quality.
-    • Spatial correlation metrics including Moran's I.
-    • Statistical significance testing with permutation tests.
-    • Effect size calculations for practical significance.
-
-Notes:
-    • Handles coordinate system alignment between datasets.
-    • Provides confidence intervals for all metrics.
-    • Includes multiple comparison corrections for statistical tests.
 """
 import argparse
 import json

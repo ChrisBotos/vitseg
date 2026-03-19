@@ -1,9 +1,9 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: compare_improvements.py
+Script Name: compare_improvements.py.
 Description:
     Visual comparison of the color generation improvements.
     Shows before/after examples of PCA plots and overlay transparency.
@@ -14,15 +14,6 @@ Dependencies:
 
 Usage:
     python compare_improvements.py
-
-Key Features:
-    • Side-by-side comparison of old vs new color schemes.
-    • Demonstrates improved contrast and transparency.
-    • Shows publication-quality formatting improvements.
-
-Notes:
-    • Run after implementing the color improvements.
-    • Generates comparison plots for documentation.
 """
 import traceback
 import matplotlib.pyplot as plt

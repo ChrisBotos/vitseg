@@ -1,9 +1,9 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: generate_contrast_colors.py
+Script Name: generate_contrast_colors.py.
 Description:
     Generate high-contrast color palettes optimized for scientific visualization.
     Creates visually distinct colors with guaranteed contrast ratios for overlays.
@@ -15,16 +15,6 @@ Dependencies:
 Usage:
     from generate_contrast_colors import generate_color_palette
     colors = generate_color_palette(n=10, background="dark")
-
-Key Features:
-    • Golden ratio hue distribution for maximum visual separation.
-    • WCAG-compliant contrast ratios for accessibility.
-    • Optimized for both light and dark backgrounds.
-    • Returns both RGBA tuples and hex codes for flexibility.
-
-Notes:
-    • Use background="dark" for microscopy images with dark backgrounds.
-    • Higher contrast_ratio values improve visibility but reduce color variety.
 """
 import traceback
 from typing import Dict, Tuple, List
@@ -35,7 +25,7 @@ def calculate_luminance(rgb: Tuple[int, int, int]) -> float:
     """
     Calculate relative luminance using WCAG 2.1 formula.
 
-    Parameters:
+    Args:
         rgb: RGB color tuple with values 0-255.
 
     Returns:
@@ -61,7 +51,7 @@ def calculate_contrast_ratio(color1: Tuple[int, int, int], color2: Tuple[int, in
     """
     Calculate WCAG contrast ratio between two colors.
 
-    Parameters:
+    Args:
         color1: First RGB color tuple (0-255).
         color2: Second RGB color tuple (0-255).
 
@@ -96,26 +86,26 @@ def get_predefined_vibrant_colors() -> List[Tuple[int, int, int]]:
         • Minimum contrast ratio of 4.0 guaranteed for dark backgrounds.
     """
     return [
-        (255, 0, 0),      # Strong red - contrast: 5.25
-        (0, 255, 0),      # Neon green - contrast: 15.30
-        (0, 128, 255),    # Bright blue - contrast: 5.53
-        (255, 0, 255),    # Magenta - contrast: 6.70
-        (255, 140, 0),    # Deep orange - contrast: 9.00
-        (0, 255, 255),    # Cyan - contrast: 16.75
-        (255, 255, 0),    # Yellow - contrast: 19.56
-        (180, 0, 255),    # Bright purple - contrast: 4.85 (improved from 128,0,255)
-        (255, 20, 147),   # Deep pink - contrast: 5.77
-        (0, 255, 127),    # Spring green - contrast: 15.61
-        (255, 69, 0),     # Red orange - contrast: 6.89
-        (160, 80, 255),   # Blue violet - contrast: 4.12 (improved from 138,43,226)
-        (255, 215, 0),    # Gold - contrast: 16.78
-        (50, 255, 50),    # Lime green - contrast: 14.35 (improved from 50,205,50)
-        (255, 105, 180),  # Hot pink - contrast: 8.17
-        (0, 191, 255),    # Deep sky blue - contrast: 8.59
-        (255, 165, 0),    # Orange - contrast: 11.47
-        (180, 120, 255),  # Medium purple - contrast: 5.23 (improved from 147,112,219)
-        (255, 80, 80),    # Light red - contrast: 7.45
-        (80, 255, 200),   # Light sea green - contrast: 13.89 (improved from 32,178,170)
+        (255, 0, 0),      # Strong red - contrast: 5.25.
+        (0, 255, 0),      # Neon green - contrast: 15.30.
+        (0, 128, 255),    # Bright blue - contrast: 5.53.
+        (255, 0, 255),    # Magenta - contrast: 6.70.
+        (255, 140, 0),    # Deep orange - contrast: 9.00.
+        (0, 255, 255),    # Cyan - contrast: 16.75.
+        (255, 255, 0),    # Yellow - contrast: 19.56.
+        (180, 0, 255),    # Bright purple - contrast: 4.85 (improved from 128,0,255).
+        (255, 20, 147),   # Deep pink - contrast: 5.77.
+        (0, 255, 127),    # Spring green - contrast: 15.61.
+        (255, 69, 0),     # Red orange - contrast: 6.89.
+        (160, 80, 255),   # Blue violet - contrast: 4.12 (improved from 138,43,226).
+        (255, 215, 0),    # Gold - contrast: 16.78.
+        (50, 255, 50),    # Lime green - contrast: 14.35 (improved from 50,205,50).
+        (255, 105, 180),  # Hot pink - contrast: 8.17.
+        (0, 191, 255),    # Deep sky blue - contrast: 8.59.
+        (255, 165, 0),    # Orange - contrast: 11.47.
+        (180, 120, 255),  # Medium purple - contrast: 5.23 (improved from 147,112,219).
+        (255, 80, 80),    # Light red - contrast: 7.45.
+        (80, 255, 200),   # Light sea green - contrast: 13.89 (improved from 32,178,170).
     ]
 
 
@@ -128,7 +118,7 @@ def generate_color_palette(n: int, alpha: int = 255, background: str = "dark",
     Uses predefined vibrant colors for optimal visual separation, with algorithmic
     fallback for large numbers of colors. Supports custom color palettes.
 
-    Parameters:
+    Args:
         n: Number of colors to generate.
         alpha: Alpha transparency (0-255, 255 = opaque).
         background: Background type ("light" or "dark").
@@ -323,7 +313,7 @@ def colors_to_hex_list(color_dict: Dict[int, Tuple[int, int, int, int]]) -> List
     """
     Convert RGBA color dictionary to list of hex color codes for matplotlib/seaborn.
 
-    Parameters:
+    Args:
         color_dict: Dictionary of cluster index to RGBA tuple.
 
     Returns:

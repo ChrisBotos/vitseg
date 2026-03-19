@@ -8,10 +8,6 @@ Description:
     Comprehensive test suite for spatial alignment verification script.
     Tests coordinate system analysis, visualization generation, and
     diagnostic reporting with synthetic and real data scenarios.
-    
-    This test suite ensures the reliability and accuracy of spatial
-    alignment verification, providing confidence in coordinate system
-    analysis for bioinformaticians using the verification framework.
 
 Dependencies:
     • Python >= 3.10.
@@ -20,18 +16,6 @@ Dependencies:
 
 Usage:
     pytest tests/test_verify_spatial_alignment.py -v
-
-Key Features:
-    • Synthetic data generation for controlled testing.
-    • Coordinate system alignment validation.
-    • Visualization output verification.
-    • Edge case handling validation.
-    • Integration testing with real data structures.
-
-Notes:
-    • Tests cover both aligned and misaligned coordinate systems.
-    • Validates proper handling of missing or malformed data.
-    • Ensures visualization outputs are generated correctly.
 """
 import pytest
 import numpy as np

@@ -40,17 +40,6 @@ Usage:
         --method ensemble \
         --max_clusters 20
 
-Key Features:
-    • Multiple clustering algorithms with ensemble voting.
-    • Hierarchical cluster analysis with dendrogram visualization.
-    • Comprehensive evaluation metrics and stability analysis.
-    • Advanced visualization with biological context.
-    • Automated optimal cluster number selection.
-
-Notes:
-    • Designed to work with enhanced ViT features from segmentation_mask_dynamic_patches_vit.py.
-    • Includes extensive validation and quality control measures.
-    • Generates detailed analysis reports for biological interpretation.
 """
 import argparse
 import logging
@@ -238,7 +227,7 @@ class ClusterEvaluator:
         # Cluster balance metrics.
         unique_labels, counts = np.unique(labels, return_counts=True)
         metrics['n_clusters'] = len(unique_labels)
-        metrics['cluster_balance'] = np.std(counts) / np.mean(counts)  # Lower is better
+        metrics['cluster_balance'] = np.std(counts) / np.mean(counts)  # Lower is better.
         metrics['min_cluster_size'] = np.min(counts)
         metrics['max_cluster_size'] = np.max(counts)
         
@@ -266,7 +255,7 @@ class ClusterEvaluator:
                 # Compute average pairwise distance within cluster.
                 distances = pdist(cluster_coords)
                 avg_distance = np.mean(distances)
-                coherence_scores.append(1.0 / (1.0 + avg_distance))  # Higher is better
+                coherence_scores.append(1.0 / (1.0 + avg_distance))  # Higher is better.
         
         return np.mean(coherence_scores) if coherence_scores else 0.0
 

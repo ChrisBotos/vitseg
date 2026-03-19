@@ -1,36 +1,21 @@
 #!/usr/bin/env python3
-
 """
-SMALL SCALE TEST FOR SPOT-NUCLEI CLUSTERING
+Author: Christos Botos.
+Affiliation: Leiden University Medical Center.
+Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Author: Christos Botos
-Affiliation: Leiden University Medical Center
-Contact: botoschristos@gmail.com
-
+Script Name: test_spot_nuclei_small.py.
 Description:
     Test the spot-nuclei clustering pipeline with a small subset of data
     to verify everything works correctly before running on the full dataset.
+    Uses first 5000 nuclei for quick testing.
 
 Dependencies:
-    - pandas
-    - numpy
-    - rich
-    - scikit-learn
-    - matplotlib
+    • Python >= 3.10.
+    • pandas, numpy, rich, scikit-learn, matplotlib.
 
 Usage:
     python code/test_spot_nuclei_small.py
-
-Key Features:
-    • Uses first 5000 nuclei for quick testing
-    • Tests all pipeline components
-    • Validates output files and formats
-    • Provides performance metrics
-
-Notes:
-    • Run this before the full analysis
-    • Should complete in under 2 minutes
-    • Validates coordinate compatibility and clustering
 """
 
 import traceback
@@ -175,7 +160,7 @@ def run_small_test():
 
 
 def main():
-    """Main function to run small scale test."""
+    """Run the small scale test and print suggested full-analysis command."""
     try:
         success = run_small_test()
         

@@ -15,17 +15,6 @@ Dependencies:
 
 Usage:
     python test_uniform_tiling.py
-
-Key Features:
-    • Creates synthetic binary mask for testing.
-    • Tests uniform tiling feature extraction.
-    • Validates output file formats and compatibility.
-    • Checks integration with clustering pipeline.
-
-Notes:
-    • This test uses synthetic data to verify functionality.
-    • Run this before processing real microscopy images.
-    • Helps identify configuration or dependency issues.
 """
 
 import traceback
@@ -40,13 +29,13 @@ def create_synthetic_binary_mask(width: int = 512, height: int = 512, num_region
     """
     Create a synthetic binary mask image for testing uniform tiling.
     
-    Parameters:
-        width: Image width in pixels.
-        height: Image height in pixels.
-        num_regions: Number of white regions to create.
-        
+    Args:
+        width (int): Image width in pixels.
+        height (int): Image height in pixels.
+        num_regions (int): Number of white regions to create.
+
     Returns:
-        Binary mask array (0 = background, 255 = foreground).
+        np.ndarray: Binary mask array (0 = background, 255 = foreground).
     """
     print(f"DEBUG: Creating synthetic binary mask ({width}x{height}) with {num_regions} regions")
     
@@ -55,7 +44,7 @@ def create_synthetic_binary_mask(width: int = 512, height: int = 512, num_region
     
     # Add random white regions to simulate nuclei.
     np.random.seed(42)  # For reproducible test results.
-    
+
     for i in range(num_regions):
         # Random center position.
         center_x = np.random.randint(50, width - 50)

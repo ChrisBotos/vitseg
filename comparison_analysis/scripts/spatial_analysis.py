@@ -9,10 +9,6 @@ Description:
     in kidney tissue samples. Implements Moran's I, spatial autocorrelation,
     and Local Indicators of Spatial Association (LISA) for comprehensive
     spatial clustering validation.
-    
-    This module provides bioinformaticians with advanced spatial statistics
-    to assess whether clustering patterns exhibit meaningful spatial organization
-    beyond random distribution, crucial for tissue architecture analysis.
 
 Dependencies:
     • Python >= 3.10.
@@ -27,35 +23,6 @@ Usage:
         --output comparison_analysis/results/spatial/ \
         --samples IRI1 IRI2 IRI3 \
         --distance_threshold 100.0
-
-Arguments:
-    --cluster_data     Path to cluster assignments with coordinates.
-    --output           Output directory for spatial analysis results.
-    --samples          Sample names to include in analysis.
-    --distance_threshold  Maximum distance for spatial neighbors.
-
-Inputs:
-    • spot_clusters.csv    Cluster assignments with spatial coordinates.
-
-Outputs:
-    • morans_i_results.json     Moran's I statistics for each clustering.
-    • spatial_autocorr.csv      Spatial autocorrelation analysis.
-    • lisa_analysis.csv         Local spatial association indicators.
-    • spatial_weights.csv       Spatial weight matrix information.
-    • spatial_summary.txt       Human-readable spatial analysis report.
-
-Key Features:
-    • Moran's I calculation for global spatial autocorrelation.
-    • Local Indicators of Spatial Association (LISA) analysis.
-    • Spatial weight matrix construction with multiple methods.
-    • Getis-Ord G statistics for local clustering detection.
-    • Spatial clustering validation metrics.
-    • Hotspot and coldspot identification.
-
-Notes:
-    • Handles multiple samples with separate spatial analysis.
-    • Provides statistical significance testing for spatial patterns.
-    • Includes visualization of spatial correlation patterns.
 """
 import argparse
 import json

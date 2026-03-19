@@ -1,9 +1,9 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: overlay_masks.py
+Script Name: overlay_masks.py.
 Description:
     Memory-efficient overlay of integer-label masks (.npy) on very large microscopy TIFFs.
     This script addresses critical GPU out-of-memory (OOM) issues through advanced memory
@@ -13,54 +13,18 @@ Description:
     full-resolution output quality.
 
 Dependencies:
-    • Python >= 3.10
-    • numpy >= 1.21.0
-    • tifffile >= 2021.7.2
-    • tqdm >= 4.62.0
-    • psutil >= 5.8.0 (for system memory monitoring)
-    • cupy >= 9.0.0 (optional, for GPU acceleration)
-    • imagecodecs (optional, for compression)
+    • Python >= 3.10.
+    • numpy >= 1.21.0.
+    • tifffile >= 2021.7.2.
+    • tqdm >= 4.62.0.
+    • psutil >= 5.8.0 (for system memory monitoring).
+    • cupy >= 9.0.0 (optional, for GPU acceleration).
+    • imagecodecs (optional, for compression).
 
 Usage:
     python overlay_masks.py --image img/IRI_regist_cropped.tif --mask segmentation_masks.npy
                            --out overlay.tif --tile 1024 --workers 8 --alpha 0.4 --gpu
                            --batch-size 4 --memory-limit 8192
-
-Arguments:
-    --image         Path to input TIFF image file
-    --mask          Path to integer-label mask (.npy format)
-    --out           Output BigTIFF path (default: overlay.tif)
-    --tile          Tile edge length in pixels (default: 1024)
-    --workers       Number of worker processes ('auto' or integer, default: auto)
-    --alpha         Overlay transparency [0,1] (default: 0.4)
-    --seed          RNG seed for reproducible colors (default: 42)
-    --gpu           Enable CuPy GPU acceleration when available
-    --batch-size    Spatial batch size for memory management (default: 4)
-    --memory-limit  GPU memory limit in MB (default: 8192)
-
-Inputs:
-    • Large microscopy TIFF image (any bit depth)
-    • Integer-labeled segmentation mask (.npy format)
-
-Outputs:
-    • overlay.tif   High-quality BigTIFF overlay with alpha-blended masks
-    • Debug logs    Comprehensive memory usage and processing statistics
-
-Key Features:
-    • Memory-efficient spatial batching (2x2 tile groups)
-    • Progressive memory cleanup between processing steps
-    • GPU memory monitoring with automatic CPU fallback
-    • Configurable memory limits and batch sizes
-    • Deterministic color generation for reproducible results
-    • BigTIFF support for images >4GB
-    • Comprehensive error handling and recovery
-
-Notes:
-    • Designed for kidney slice analysis from I/R injury studies
-    • Optimized for DAPI stain segmentation overlays
-    • Supports both CPU and GPU processing with graceful fallback
-    • Memory usage scales with tile size and batch size, not image size
-    • All processing parameters are configurable for different hardware setups
 """
 
 from __future__ import annotations
@@ -450,9 +414,9 @@ def blend_tile_with_mask(
         # Use modulo operation to ensure all labels fit within LUT bounds.
         max_lut_index = lut_tensor.shape[0] - 1
         safe_mask_indices = mask_tensor % (max_lut_index + 1)
-        colored_mask = lut_tensor[safe_mask_indices]  # Shape: (H, W, 3)
+        colored_mask = lut_tensor[safe_mask_indices]  # Shape: (H, W, 3).
 
-        # Alpha blend: result = img * (1-alpha) + colored_mask * alpha
+        # Alpha blend: result = img * (1-alpha) + colored_mask * alpha.
         blended = img_tensor * (1.0 - alpha) + colored_mask * alpha
         blended = xp.clip(blended, 0, 255).astype(xp.uint8)
 

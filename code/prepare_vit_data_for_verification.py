@@ -1,36 +1,24 @@
-#!/usr/bin/env python3
 """
-Prepare ViT Data for Spatial Alignment Verification
+Author: Christos Botos.
+Affiliation: Leiden University Medical Center.
+Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Author: Christos Botos
-Affiliation: Leiden University Medical Center
-Contact: botoschristos@gmail.com
-
+Script Name: prepare_vit_data_for_verification.py.
 Description:
-    This script prepares ViT cluster data from IRI_regist_14k for spatial alignment
-    verification by assigning sample labels based on coordinate ranges and reformatting
-    the data to match the expected format.
+    Prepares ViT cluster data from IRI_regist_14k for spatial alignment
+    verification by assigning sample labels based on coordinate ranges and
+    reformatting the data to match the expected format.
 
-Requirements:
+Dependencies:
     • Python >= 3.10.
     • pandas, numpy.
+    • rich (for enhanced console output).
 
 Usage:
     python code/prepare_vit_data_for_verification.py \
         --vit_clusters results/IRI_regist_14k/patch_clusters.csv \
         --spatial_data data/metadata_complete.csv \
         --output results/IRI_regist_14k/vit_clusters_formatted.csv
-
-Key Features:
-    • Assigns ViT points to samples based on coordinate overlap with spatial data.
-    • Reformats column names to match verification script expectations.
-    • Adds sample and condition information.
-    • Provides comprehensive statistics and validation.
-
-Notes:
-    • Uses spatial coordinate ranges to determine sample boundaries.
-    • Handles overlapping regions by assigning to closest sample centroid.
-    • Provides detailed assignment statistics for validation.
 """
 import argparse
 import pandas as pd
@@ -193,6 +181,7 @@ def format_vit_data_for_verification(vit_data: pd.DataFrame) -> pd.DataFrame:
 
 
 def main():
+    """Main execution function."""
     parser = argparse.ArgumentParser(description="Prepare ViT data for spatial alignment verification")
     parser.add_argument("--vit_clusters", type=Path, required=True,
                        help="Path to ViT cluster CSV file")

@@ -9,21 +9,6 @@ Description:
     Validates border clustering analysis, spatial coherence computation, and
     multi-scale comparison capabilities for robust quality evaluation.
 
-    Key test components for bioinformatician users:
-        • **Border clustering validation** – Tests correct interpretation of
-          border-adjacent patch clustering as positive quality indicator.
-        • **Spatial coherence testing** – Validates spatial relationship
-          preservation metrics and nearest neighbor purity calculations.
-        • **Multi-scale assessment** – Tests comparison across different patch
-          sizes and combination configurations for optimal selection.
-        • **Quality metrics validation** – Ensures proper computation of
-          silhouette, Calinski-Harabasz, and Davies-Bouldin scores.
-
-    Scientific context:
-        These tests ensure that the quality assessment correctly identifies
-        meaningful biological patterns and technical artifacts, providing
-        reliable guidance for ViT configuration optimization in tissue analysis.
-
 Dependencies:
     • Python >= 3.10.
     • unittest, numpy, pandas, scikit-learn.
@@ -31,21 +16,9 @@ Dependencies:
 
 Usage:
     python -m pytest tests/test_assess_vit_quality.py -v
-    
-    # Or run directly
+
+    # Or run directly.
     python tests/test_assess_vit_quality.py
-
-Key Features:
-    • Comprehensive validation of border clustering quality assessment.
-    • Spatial coherence computation accuracy testing.
-    • Multi-configuration comparison validation.
-    • Error handling and edge case testing.
-    • Mock data generation for reproducible testing.
-
-Notes:
-    • Uses synthetic data to ensure reproducible test results.
-    • Validates both positive and negative quality indicators.
-    • Tests edge cases and error conditions for robustness.
 """
 import unittest
 import traceback
@@ -125,7 +98,7 @@ class TestViTQualityAssessor(unittest.TestCase):
         )
         
         # Assign border patches to a dedicated cluster.
-        self.labels[border_mask] = 5  # New cluster for border patches
+        self.labels[border_mask] = 5  # New cluster for border patches.
     
     def tearDown(self):
         """Clean up test fixtures."""

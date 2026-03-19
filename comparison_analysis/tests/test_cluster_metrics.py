@@ -8,10 +8,6 @@ Description:
     Comprehensive test suite for cluster metrics analysis module.
     Tests all statistical functions including ARI, NMI, silhouette analysis,
     and confusion matrix calculations with synthetic and real data scenarios.
-    
-    This test suite ensures the reliability and accuracy of all cluster
-    alignment metrics, providing confidence in the statistical results
-    for bioinformaticians using the analysis framework.
 
 Dependencies:
     • Python >= 3.10.
@@ -20,18 +16,6 @@ Dependencies:
 
 Usage:
     pytest comparison_analysis/tests/test_cluster_metrics.py -v
-
-Key Features:
-    • Synthetic data generation for controlled testing.
-    • Edge case handling validation.
-    • Statistical accuracy verification.
-    • Performance benchmarking.
-    • Error handling validation.
-
-Notes:
-    • Tests cover both perfect and imperfect cluster alignments.
-    • Validates confidence interval calculations.
-    • Ensures proper handling of missing or malformed data.
 """
 import pytest
 import numpy as np

@@ -1,9 +1,9 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: test_enhanced_colors.py
+Script Name: test_enhanced_colors.py.
 Description:
     Comprehensive test suite for enhanced color generation system.
     Validates vibrant color generation, custom palettes, and configuration system.
@@ -17,31 +17,6 @@ Dependencies:
 
 Usage:
     python test_enhanced_colors.py
-
-Arguments:
-    None - runs all test suites automatically.
-
-Inputs:
-    • Test configuration files.
-    • Generated color palettes.
-
-Outputs:
-    • Test results and validation reports.
-    • Visual comparison charts (optional).
-    • Performance benchmarks.
-
-Key Features:
-    • Comprehensive validation of color generation improvements.
-    • Custom palette configuration testing.
-    • Visual contrast verification.
-    • Performance comparison with original system.
-    • Integration testing with existing pipeline components.
-
-Notes:
-    • Tests validate both predefined vibrant colors and algorithmic fallback.
-    • Custom color palette functionality is thoroughly tested.
-    • All tests include scientific visualization context validation.
-    • Performance tests ensure no regression in generation speed.
 """
 import traceback
 import numpy as np

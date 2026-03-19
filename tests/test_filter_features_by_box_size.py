@@ -3,31 +3,14 @@ Author: Christos Botos.
 Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Test Script Name: test_filter_features_by_box_size.py.
+Script Name: test_filter_features_by_box_size.py.
 Description:
     Comprehensive test suite for the filter_features_by_box_size.py script.
     Tests feature filtering functionality, dimension detection, and file handling
     for multi-scale ViT feature processing.
 
-    Key test areas for bioinformatician users:
-        • **Feature dimension detection** – Validates correct identification of
-          scale boundaries in concatenated multi-scale feature vectors.
-        • **Scale filtering accuracy** – Ensures selected box sizes are correctly
-          extracted from combined feature files without data corruption.
-        • **File handling robustness** – Tests proper input validation, output
-          directory creation, and coordinate file copying functionality.
-        • **Edge case handling** – Validates behavior with invalid scales,
-          missing files, and malformed input data.
-        • **Memory efficiency** – Confirms processing of large feature files
-          without excessive memory usage or performance degradation.
-
-    Scientific validation:
-        Tests ensure that filtered features maintain their biological meaning
-        and spatial relationships, critical for downstream clustering and
-        analysis in kidney injury studies.
-
 Dependencies:
-    • Python>=3.10.
+    • Python >= 3.10.
     • pytest for test framework.
     • numpy, pandas for data processing.
     • tempfile for temporary test files.
@@ -38,18 +21,6 @@ Usage:
 
     # Run specific test.
     pytest tests/test_filter_features_by_box_size.py::test_feature_dimension_detection -v
-
-Key Features:
-    • Comprehensive test coverage for all script functions.
-    • Temporary file handling for isolated test environments.
-    • Validation of output file formats and naming conventions.
-    • Performance testing for large feature datasets.
-
-Notes:
-    • Tests use synthetic feature data with known dimensions.
-    • All tests clean up temporary files automatically.
-    • Test data mimics real ViT-S/16 384-dimensional features.
-    • Validates compatibility with existing pipeline infrastructure.
 """
 
 import pytest

@@ -3,7 +3,7 @@ Author: Christos Botos.
 Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Test Script: test_spot_nuclei_clustering.py.
+Script Name: test_spot_nuclei_clustering.py.
 Description:
     Comprehensive test suite for the spot-nuclei clustering analysis pipeline.
     Tests data loading, spatial assignment, feature aggregation, and clustering.
@@ -15,18 +15,7 @@ Dependencies:
 
 Usage:
     python -m pytest tests/test_spot_nuclei_clustering.py -v
-    python tests/test_spot_nuclei_clustering.py  # Direct execution
-
-Key Features:
-    • Unit tests for all major functions in the clustering pipeline.
-    • Mock data generation for testing edge cases.
-    • Validation of output file formats and contents.
-    • Performance benchmarks for large datasets.
-
-Notes:
-    • Tests use synthetic data to ensure reproducibility.
-    • Edge cases include spots with no nuclei and isolated nuclei.
-    • All tests include proper cleanup of temporary files.
+    python tests/test_spot_nuclei_clustering.py
 """
 import unittest
 import tempfile

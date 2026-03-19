@@ -9,10 +9,6 @@ Description:
     analysis. Coordinates the complete workflow including data loading, alignment
     metrics calculation, spatial analysis, visualization generation, and
     comprehensive report creation.
-    
-    This script provides bioinformaticians with a single entry point for
-    complete cluster alignment analysis, producing publication-ready results
-    and comprehensive scientific documentation.
 
 Dependencies:
     • Python >= 3.10.
@@ -27,37 +23,6 @@ Usage:
         --output comparison_analysis/results/complete_analysis \
         --samples IRI1 IRI2 IRI3 \
         --cluster_column figure_idents
-
-Arguments:
-    --vit_clusters     Path to ViT cluster assignments CSV.
-    --spatial_clusters Path to spatial metadata with original clusters.
-    --output           Output directory for complete analysis results.
-    --samples          Sample names to include in analysis.
-    --cluster_column   Column name for spatial clusters (figure_idents/banksy).
-
-Inputs:
-    • spot_clusters.csv        ViT cluster assignments with coordinates.
-    • metadata_complete.csv    Spatial metadata with original clusters.
-
-Outputs:
-    • metrics/                 Statistical alignment metrics and results.
-    • spatial/                 Spatial correlation analysis results.
-    • visualizations/          Publication-quality figures and plots.
-    • reports/                 Comprehensive scientific reports.
-    • analysis_summary.html    Interactive summary dashboard.
-
-Key Features:
-    • Complete end-to-end analysis workflow automation.
-    • Comprehensive statistical validation and significance testing.
-    • Publication-quality visualization generation.
-    • Automated scientific report creation with interpretation.
-    • Interactive dashboard for result exploration.
-    • Robust error handling and progress tracking.
-
-Notes:
-    • Automatically creates all necessary output directories.
-    • Provides detailed progress tracking and error reporting.
-    • Generates both technical and interpretive documentation.
 """
 import argparse
 import json

@@ -1,35 +1,23 @@
 #!/usr/bin/env python3
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: test_overlay_masks.py
+Script Name: test_overlay_masks.py.
 Description:
     Test script for the rewritten overlay_masks.py to verify memory-efficient processing
     and configuration management functionality. This script creates synthetic test data
     and validates the overlay generation process.
 
 Dependencies:
-    • Python >= 3.10
-    • numpy >= 1.21.0
-    • tifffile >= 2021.7.2
-    • pytest (optional, for structured testing)
+    • Python >= 3.10.
+    • numpy >= 1.21.0.
+    • tifffile >= 2021.7.2.
+    • pytest (optional, for structured testing).
 
 Usage:
     python test_overlay_masks.py
-
-Key Features:
-    • Synthetic test data generation
-    • Configuration validation testing
-    • Memory management verification
-    • Error handling validation
-    • Output quality checks
-
-Notes:
-    • Creates temporary test files that are cleaned up automatically
-    • Tests both CPU and GPU processing paths (if available)
-    • Validates memory-efficient processing with different tile sizes
 """
 
 import os

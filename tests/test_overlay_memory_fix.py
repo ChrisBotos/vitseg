@@ -1,42 +1,23 @@
 #!/usr/bin/env python3
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: test_overlay_memory_fix.py
+Script Name: test_overlay_memory_fix.py.
 Description:
     Test script to verify memory optimizations in overlay_masks.py work correctly.
     This script creates synthetic test data and runs the overlay process with
     various memory constraints to ensure the fixes prevent OOM errors.
 
 Dependencies:
-    • Python >= 3.10
-    • numpy >= 1.21.0
-    • tifffile >= 2021.7.2
-    • psutil >= 5.8.0
+    • Python >= 3.10.
+    • numpy >= 1.21.0.
+    • tifffile >= 2021.7.2.
+    • psutil >= 5.8.0.
 
 Usage:
     python test_overlay_memory_fix.py
-
-Inputs:
-    • Synthetic test image and mask data
-
-Outputs:
-    • Test overlay results
-    • Memory usage statistics
-    • Performance benchmarks
-
-Key Features:
-    • Memory constraint testing
-    • Batch size optimization validation
-    • Worker process stability testing
-    • GPU memory management verification
-
-Notes:
-    • Designed to test kidney slice analysis pipeline memory fixes
-    • Tests various memory pressure scenarios
-    • Validates fallback mechanisms work correctly
 """
 
 import os

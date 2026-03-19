@@ -1,38 +1,27 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
 Script Name: filter_masks.py.
 Description:
     Memory-efficient filtering of segmentation masks based on morphological and intensity
-    metrics. This script eliminates the per‑nucleus full‑frame binary copies that
+    metrics. This script eliminates the per-nucleus full-frame binary copies that
     previously caused >200GB memory peaks for large label maps. The implementation works
-    **directly on the label image**, streams metrics in constant RAM, and writes the
-    accepted / rejected nuclei to memory‑mapped boolean stacks.
-
-Key Features:
-    • `np.load(..., mmap_mode="r")` ensures the label map is never duplicated.
-    • Metrics computed via `skimage.measure.regionprops_table` on the label map
-      (O(1) extra memory) instead of converting to a list of masks.
-    • Output boolean stacks are created as `np.memmap`, filled incrementally,
-      and finally flushed to `.npy` – peak RAM is ≈ 2× the image size, no more.
-    • Overlay generation colors each nucleus on‑the‑fly; no stack in memory.
+    directly on the label image, streams metrics in constant RAM, and writes the
+    accepted / rejected nuclei to memory-mapped boolean stacks.
 
 Dependencies:
-    • Python ≥ 3.10.
-    • numpy, pandas, matplotlib, scikit‑image.
+    • Python >= 3.10.
+    • numpy, pandas, matplotlib, scikit-image.
 
-Usage Example:
+Usage:
     python filter_masks.py \
         --input segmentation_masks.npy \
         --results-dir filtered_results \
         --output-prefix filtered_ \
         --min-pixels 20 --max-pixels 570 \
         --summary-csv --overlay --raw-image data/IRI_regist_cropped.tif
-
-Tests:
-    Run `pytest filter_masks.py -q` to execute the built‑in unit tests.
 """
 from __future__ import annotations
 
@@ -68,7 +57,7 @@ LOGGER = logging.getLogger("filter‑masks")
 
 @dataclass
 class Thresholds:
-    """Symmetric min‑max thresholds for every metric."""
+    """Symmetric min-max thresholds for every metric."""
 
     # Size and compactness.
     min_pixels: int = 0
@@ -125,7 +114,7 @@ class Config:
 ###############################################################################
 
 def compute_metrics(label_map: np.ndarray, intensity: np.ndarray | None) -> pd.DataFrame:
-    """Compute morphology metrics for every non‑zero label in *label_map*."""
+    """Compute morphology metrics for every non-zero label in *label_map*."""
 
     props = [
         "label",
@@ -194,10 +183,18 @@ def violin_scatter(
     ylabel: str,
     title: str,
 ) -> None:
-    """
-    Draw a split violin whose width is linearly proportional to the absolute
-    point count at each y-value, overlay the raw observations, and annotate
-    threshold values together with how many observations fall outside them.
+    """Draw a split violin with width proportional to absolute point count.
+
+    Overlays raw observations and annotates threshold values together
+    with how many observations fall outside them.
+
+    Args:
+        ax (matplotlib.axes.Axes): Axes object to draw on.
+        data (np.ndarray): 1-D array of metric values.
+        lo (float): Lower threshold bound.
+        hi (float): Upper threshold bound.
+        ylabel (str): Label for the y-axis.
+        title (str): Title for the x-tick label.
     """
 
     import matplotlib.pyplot as plt
@@ -287,9 +284,16 @@ def save_violin_plots(
     out_dir: Path,
     prefix: str,
 ) -> None:
-    """
-    Generate violin–scatter plots for every bounded metric and save each figure
-    as both PDF and PNG in *out_dir*.  Full absolute file paths are logged.
+    """Generate violin-scatter plots for every bounded metric.
+
+    Saves each figure as both PDF and PNG in *out_dir*.
+    Full absolute file paths are logged.
+
+    Args:
+        df (pd.DataFrame): Metrics DataFrame with one row per nucleus.
+        th (Thresholds): Threshold configuration for annotation.
+        out_dir (Path): Output directory for saved figures.
+        prefix (str): Filename prefix for saved figures.
     """
 
     import matplotlib.pyplot as plt
@@ -352,7 +356,16 @@ def paint_overlay(
     region: Tuple[float, float, float, float] | None = None,
     alpha: float = 0.35,
 ) -> None:
-    """Colour passed nuclei green and failed red; honour an optional crop box."""
+    """Colour passed nuclei green and failed nuclei red, honouring an optional crop box.
+
+    Args:
+        raw (np.ndarray): Raw microscopy image (grayscale H x W or RGB H x W x 3).
+        label_map (np.ndarray): 2-D integer label map.
+        passed_labels (set[int]): Set of label IDs that passed filtering.
+        out_path (Path): Destination path for the overlay image.
+        region (Tuple[float, float, float, float] | None): Optional fractional crop box.
+        alpha (float): Blending alpha for the overlay colour.
+    """
 
     # ❶ Crop raw and label_map if a region was given.
     if region is not None and region != (0.0, 1.0, 0.0, 1.0):
@@ -390,13 +403,23 @@ def paint_overlay(
 ###############################################################################
 
 def load_label_map(path: Path) -> np.ndarray:
-    """Return a 2‑D integer label map, loading with mmap when possible."""
+    """Return a 2-D integer label map, loading with mmap when possible.
+
+    Args:
+        path (Path): Path to the .npy file containing the label map or binary stack.
+
+    Returns:
+        np.ndarray: 2-D integer label map.
+
+    Raises:
+        ValueError: If the array shape is unsupported.
+    """
 
     arr = np.load(path, allow_pickle=True, mmap_mode="r")
     if arr.ndim == 2 and np.issubdtype(arr.dtype, np.integer):
         return arr
     if arr.ndim == 3:
-        # Binary stack ➜ need to pack into label map first for streaming.
+        # Binary stack needs to be packed into a label map first for streaming.
         label = np.zeros(arr.shape[1:], dtype=np.int32)
         for i, sl in enumerate(arr, 1):
             label[sl.astype(bool)] = i
@@ -525,7 +548,7 @@ def main() -> None:  # noqa: C901 – Linear CLI flow.
             alpha=0.35,
         )
 
-    '''Persist boolean mask stack for downstream scripts'''
+    '''Persist boolean mask stack for downstream scripts.'''
     if cfg.no_stack:
         LOGGER.info("Flag --no_stack set – skipping Boolean-stack export.")
         LOGGER.info("✓ Done.")

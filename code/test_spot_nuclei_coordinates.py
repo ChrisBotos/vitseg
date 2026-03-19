@@ -1,36 +1,21 @@
 #!/usr/bin/env python3
-
 """
-TEST COORDINATE COMPATIBILITY
+Author: Christos Botos.
+Affiliation: Leiden University Medical Center.
+Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Author: Christos Botos
-Affiliation: Leiden University Medical Center
-Contact: botoschristos@gmail.com
-
+Script Name: test_spot_nuclei_coordinates.py.
 Description:
     Quick test script to verify coordinate compatibility between nuclei and spots
-    before running the full spot-nuclei clustering analysis. This helps ensure
-    the coordinate systems are aligned and suggests appropriate parameters.
+    before running the full spot-nuclei clustering analysis. Loads a small sample
+    of coordinates, analyzes ranges and overlaps, and suggests optimal parameters.
 
 Dependencies:
-    - pandas
-    - numpy
-    - rich
+    • Python >= 3.10.
+    • pandas, numpy, rich, scipy.
 
 Usage:
     python code/test_spot_nuclei_coordinates.py
-
-Key Features:
-    • Loads a small sample of nuclei and spot coordinates
-    • Analyzes coordinate ranges and overlaps
-    • Suggests optimal max_distance parameter
-    • Estimates assignment success rate
-    • Provides recommendations for full analysis
-
-Notes:
-    • Run this before the full analysis to save time
-    • Uses only first 1000 nuclei for quick testing
-    • Provides clear recommendations for parameter tuning
 """
 
 import traceback
@@ -227,7 +212,7 @@ python code/cluster_spots_by_nuclei_features.py \\
 
 
 def main():
-    """Main function to run coordinate compatibility test."""
+    """Run coordinate compatibility test and print recommendations."""
     try:
         success = analyze_coordinate_compatibility()
         

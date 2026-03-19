@@ -29,40 +29,6 @@ Usage:
     --max_distance 1000 \
     --aggregation_method mean
 
-Arguments:
-    --nuclei_coords        Path to nuclei coordinates CSV file.
-    --nuclei_features      Path to nuclei ViT features CSV file.
-    --spots_metadata       Path to spots metadata CSV file.
-    --output               Output directory for results.
-    --samples              Sample names to include (e.g., IRI1 IRI2 IRI3).
-    --clusters             Number of clusters for K-means.
-    --min_nuclei_per_spot  Minimum nuclei required per spot to include in analysis.
-    --aggregation_method   Method to aggregate nuclei features per spot (mean, median, max).
-    --max_distance         Maximum distance to attach nucleus to spot (pixels).
-
-Inputs:
-    • coords_*.csv         Nuclei center coordinates (x_center, y_center).
-    • features_*.csv       ViT features for each nucleus.
-    • metadata_complete.csv Spot locations and annotations.
-
-Outputs:
-    • spot_nuclei_assignments.csv    Nucleus-to-spot assignments.
-    • spot_aggregated_features.csv   Aggregated features per spot.
-    • spot_clusters.csv              Cluster assignments per spot.
-    • spot_cluster_visualization.png Visualization of clustered spots.
-    • spot_cluster_stats.txt         Statistics and analysis summary.
-
-Key Features:
-    • Spatial assignment of nuclei to nearest spots using Euclidean distance.
-    • Robust handling of spots with varying nuclei counts (0 to many).
-    • Multiple aggregation strategies for combining nuclei features per spot.
-    • Publication-quality visualizations with scientific color palettes.
-    • Comprehensive statistics and quality control metrics.
-
-Notes:
-    • Spots without nuclei within max_distance are excluded from clustering.
-    • Features are standardized before clustering for optimal performance.
-    • Clustering results can be compared with figure_idents for validation.
 """
 import argparse
 import traceback

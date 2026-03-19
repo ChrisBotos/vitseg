@@ -9,21 +9,6 @@ Description:
     Tests all enhanced components including multi-scale fusion, attention mechanisms,
     and clustering algorithms to ensure proper functionality and performance gains.
 
-    Key test components for bioinformatician users:
-        • **Feature extraction validation** – Tests multi-scale patch processing,
-          attention-based fusion, and hierarchical layer combination.
-        • **Clustering algorithm testing** – Validates ensemble methods, optimal
-          cluster selection, and evaluation metrics.
-        • **Performance benchmarking** – Measures computational efficiency and
-          memory usage improvements.
-        • **Biological relevance testing** – Validates spatial coherence and
-          cell type separation quality.
-
-    Scientific context:
-        This test suite ensures that all ViT improvements maintain biological
-        signal integrity while enhancing clustering performance, crucial for
-        reliable cell type identification in tissue analysis.
-
 Dependencies:
     • Python >= 3.10.
     • numpy, pandas, torch, scikit-learn, pytest.
@@ -33,18 +18,6 @@ Usage:
     python test_vit_improvements.py
     # or
     pytest test_vit_improvements.py -v
-
-Key Features:
-    • Comprehensive unit tests for all enhanced components.
-    • Integration tests for complete pipeline validation.
-    • Performance benchmarks and regression tests.
-    • Biological relevance validation.
-    • Memory and computational efficiency tests.
-
-Notes:
-    • Tests use synthetic data to ensure reproducible results.
-    • Includes both positive and negative test cases.
-    • Validates error handling and edge cases.
 """
 import traceback
 import time
@@ -62,7 +35,7 @@ from sklearn.datasets import make_blobs
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
-# Import enhanced ViT components (assuming they're in the same directory).
+# Import enhanced ViT components.
 try:
     from segmentation_mask_dynamic_patches_vit import (
         MultiScaleAttentionFusion, EnhancedViTFeatureExtractor
@@ -155,12 +128,12 @@ class TestEnhancedViTFeatureExtractor(unittest.TestCase):
             def forward(self, pixel_values, output_hidden_states=False):
                 batch_size = pixel_values.shape[0]
                 hidden_size = self.config.hidden_size
-                num_patches = 196  # 14x14 patches for 224x224 image
+                num_patches = 196  # 14x14 patches for 224x224 image.
                 
                 # Create mock hidden states (including CLS token).
                 hidden_states = []
                 for _ in range(self.config.num_hidden_layers):
-                    # Shape: [batch_size, num_patches + 1, hidden_size]
+                    # Shape: [batch_size, num_patches + 1, hidden_size].
                     hidden_state = torch.randn(batch_size, num_patches + 1, hidden_size)
                     hidden_states.append(hidden_state)
                 
@@ -327,7 +300,7 @@ class TestOptimalClusterDetermination(unittest.TestCase):
         # Scores dataframe should have correct structure.
         self.assertIn('k', scores_df.columns)
         self.assertIn('silhouette_score', scores_df.columns)
-        self.assertEqual(len(scores_df), 9)  # k from 2 to 10
+        self.assertEqual(len(scores_df), 9)  # k from 2 to 10.
     
     def test_scores_dataframe_validity(self):
         """Test that scores dataframe contains valid values."""

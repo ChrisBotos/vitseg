@@ -3,24 +3,19 @@ Author: Christos Botos.
 Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Test Script: test_visualize_clusters_circles.py.
+Script Name: test_visualize_clusters_circles.py.
 Description:
     Comprehensive test suite for the visualize_clusters_circles.py script.
     Tests data loading, filtering, color generation, visualization creation,
     and output file generation for tissue sample cluster visualization.
 
 Dependencies:
+    • Python >= 3.10.
     • pytest, pandas, numpy, matplotlib.
     • pathlib, tempfile for test file management.
 
 Usage:
     pytest tests/test_visualize_clusters_circles.py -v
-
-Key Features:
-    • Tests data loading and sample filtering.
-    • Validates color generation for different cluster counts.
-    • Verifies visualization output file creation.
-    • Tests both figure_idents and banksy clustering options.
 """
 import pytest
 import pandas as pd

@@ -1,9 +1,9 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: cluster_vit_patches_memopt.py
+Script Name: cluster_vit_patches_memopt.py.
 Description:
     Memory-optimized clustering of ViT patch embeddings with MiniBatchKMeans and streaming scaling,
     preserving full overlay, palette generation, PCA plotting, and CSV fallback.
@@ -18,37 +18,6 @@ Usage:
         --coords coords.csv --features_npy features.npy --features_csv features.csv \
         --clusters 10 --auto-k silhouette --batch-size 10000 \
         --outdir results --seed 0 --region 0.1 0.9 0.1 0.9
-
-Positional Arguments:
-    None.
-
-Optional Arguments:
-    --image            Path to raw microscopy image (RGB).
-    --labels           Numpy .npy list of passed labels.
-    --label_map        Original segmentation map .npy.
-    --coords           CSV of patch centroids.
-    --features_npy     Numpy .npy feature array for streaming.
-    --features_csv     CSV of features (fallback if no .npy).
-    --clusters         Initial K for MiniBatchKMeans.
-    --auto-k           Criterion for auto-K selection ('none','silhouette','dbi').
-    --batch-size       Batch size for streaming.
-    --outdir           Output directory.
-    --seed             Random seed for reproducibility.
-    --region           Fractional crop region for overlay: xmin xmax ymin ymax.
-
-Inputs:
-    • features.npy     Memory-mapped feature array (n_samples, n_features).
-    • features.csv     CSV features fallback.
-    • coords.csv       Coordinates CSV.
-    • segmentation_masks.npy Full segmentation map.
-
-Outputs:
-    • patch_clusters.csv       Cluster assignments per patch.
-    • kmeans_model.joblib      Trained MiniBatchKMeans model.
-    • scaler.joblib            StandardScaler fitted.
-    • overlay_clusters.tif     Overlay of clusters on image.
-    • pca_clusters.png         PCA scatter plot of clusters.
-    • cluster_selection_scores.csv K vs score.
 
 """
 import argparse
@@ -116,7 +85,7 @@ def compute_label_cluster_map(label_map, passed_labels, coords_df, cluster_ids):
     mapped = np.zeros_like(label_map, dtype=np.int32)
     for lab, cid in zip(passed_labels, cluster_ids):
         mask = (label_map == lab)
-        mapped[mask] = cid + 1  # 0 reserved
+        mapped[mask] = cid + 1  # 0 reserved.
     return mapped
 
 ''' Save RGBA overlay of clusters on the image '''
@@ -125,7 +94,7 @@ def save_overlay(img_path: Path, seg_map_path: Path, passed_labels: np.ndarray, 
     """
     Create RGBA overlay of cluster colors on microscopy image.
 
-    Parameters:
+    Args:
         img_path: Path to base microscopy image.
         seg_map_path: Path to segmentation mask array.
         passed_labels: Array of cell labels that passed filtering.
@@ -160,7 +129,7 @@ def save_overlay(img_path: Path, seg_map_path: Path, passed_labels: np.ndarray, 
     rgba_array = np.zeros((k + 1, 4), dtype=np.uint8)  # +1 for background (index 0).
 
     # Populate color array with palette colors.
-    # cluster_map uses 1-based indexing (0=background, 1=cluster0, 2=cluster1, etc.)
+    # cluster_map uses 1-based indexing (0=background, 1=cluster0, 2=cluster1, etc.).
     for cluster_idx, (r, g, b, a) in color_palette.items():
         array_idx = cluster_idx + 1  # Map cluster 0->index 1, cluster 1->index 2, etc.
         if array_idx < len(rgba_array):

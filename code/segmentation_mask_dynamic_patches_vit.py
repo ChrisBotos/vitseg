@@ -44,17 +44,6 @@ Usage:
         --fusion_method attention \
         --feature_dim 256
 
-Key Features:
-    • Multi-scale patch processing with attention-based fusion.
-    • Hierarchical feature extraction from multiple ViT layers.
-    • Spatial position encoding for tissue context preservation.
-    • Adaptive dimensionality reduction for optimal clustering.
-    • Comprehensive debug output for analysis validation.
-
-Notes:
-    • Optimized for GPU processing with automatic mixed precision.
-    • Includes extensive validation and error handling.
-    • Generates detailed feature analysis reports for quality assessment.
 """
 from __future__ import annotations
 
@@ -150,22 +139,22 @@ class MultiScaleAttentionFusion(nn.Module):
         # Compute attention weights for each scale.
         attention_weights = []
         for features in scale_features:
-            weight = self.scale_attention(features)  # [batch_size, 1]
+            weight = self.scale_attention(features)  # [batch_size, 1].
             attention_weights.append(weight)
 
         # Normalize attention weights across scales.
-        attention_weights = torch.stack(attention_weights, dim=2)  # [batch_size, 1, num_scales]
+        attention_weights = torch.stack(attention_weights, dim=2)  # [batch_size, 1, num_scales].
         attention_weights = F.softmax(attention_weights, dim=2)
 
         # Apply attention weights to features.
         weighted_features = []
         for i, features in enumerate(scale_features):
-            weighted = features * attention_weights[:, :, i]  # [batch_size, feature_dim]
+            weighted = features * attention_weights[:, :, i]  # [batch_size, feature_dim].
             weighted_features.append(weighted)
 
         # Concatenate and fuse through cross-scale interaction.
-        concatenated = torch.cat(weighted_features, dim=1)  # [batch_size, feature_dim * num_scales]
-        fused = self.cross_scale_fusion(concatenated)  # [batch_size, feature_dim]
+        concatenated = torch.cat(weighted_features, dim=1)  # [batch_size, feature_dim * num_scales].
+        fused = self.cross_scale_fusion(concatenated)  # [batch_size, feature_dim].
 
         return fused
 
@@ -223,7 +212,7 @@ class EnhancedViTFeatureExtractor:
                 return self._attention_based_fusion(selected_layers)
             elif self.fusion_method == "weighted":
                 return self._weighted_layer_fusion(selected_layers, layer_weights)
-            else:  # Default to improved averaging
+            else:  # Default to improved averaging.
                 return self._improved_layer_averaging(selected_layers)
 
     def _attention_based_fusion(self, layer_features: List[torch.Tensor]) -> torch.Tensor:
@@ -233,22 +222,22 @@ class EnhancedViTFeatureExtractor:
         # Extract patch features (skip CLS token) and compute spatial attention.
         layer_embeddings = []
         for layer_output in layer_features:
-            patch_tokens = layer_output[:, 1:, :]  # Skip CLS token
+            patch_tokens = layer_output[:, 1:, :]  # Skip CLS token.
 
             # Spatial attention: weight patches by their importance.
-            attention_scores = self.layer_attention(patch_tokens)  # [batch_size, num_patches, 1]
+            attention_scores = self.layer_attention(patch_tokens)  # [batch_size, num_patches, 1].
             attention_weights = F.softmax(attention_scores, dim=1)
 
             # Weighted aggregation of patch tokens.
             weighted_patches = patch_tokens * attention_weights
-            layer_embedding = weighted_patches.mean(dim=1)  # [batch_size, feature_dim]
+            layer_embedding = weighted_patches.mean(dim=1)  # [batch_size, feature_dim].
             layer_embeddings.append(layer_embedding)
 
         # Combine layer embeddings with learned weights.
-        stacked_embeddings = torch.stack(layer_embeddings, dim=1)  # [batch_size, num_layers, feature_dim]
+        stacked_embeddings = torch.stack(layer_embeddings, dim=1)  # [batch_size, num_layers, feature_dim].
         layer_attention_weights = F.softmax(
             self.layer_attention(stacked_embeddings).squeeze(-1), dim=1
-        )  # [batch_size, num_layers]
+        )  # [batch_size, num_layers].
 
         # Final weighted combination.
         final_embedding = (stacked_embeddings * layer_attention_weights.unsqueeze(-1)).sum(dim=1)
@@ -263,8 +252,8 @@ class EnhancedViTFeatureExtractor:
 
         weighted_embeddings = []
         for i, layer_output in enumerate(layer_features):
-            patch_tokens = layer_output[:, 1:, :]  # Skip CLS token
-            layer_embedding = patch_tokens.mean(dim=1)  # [batch_size, feature_dim]
+            patch_tokens = layer_output[:, 1:, :]  # Skip CLS token.
+            layer_embedding = patch_tokens.mean(dim=1)  # [batch_size, feature_dim].
             weighted_embeddings.append(layer_embedding * weights[i])
 
         combined = torch.stack(weighted_embeddings, dim=0).sum(dim=0)
@@ -274,14 +263,14 @@ class EnhancedViTFeatureExtractor:
         """Improved averaging with variance weighting."""
         layer_embeddings = []
         for layer_output in layer_features:
-            patch_tokens = layer_output[:, 1:, :]  # Skip CLS token
+            patch_tokens = layer_output[:, 1:, :]  # Skip CLS token.
 
             # Weight patches by their variance (more informative patches get higher weight).
-            patch_variance = patch_tokens.var(dim=-1, keepdim=True)  # [batch_size, num_patches, 1]
+            patch_variance = patch_tokens.var(dim=-1, keepdim=True)  # [batch_size, num_patches, 1].
             variance_weights = F.softmax(patch_variance, dim=1)
 
             weighted_patches = patch_tokens * variance_weights
-            layer_embedding = weighted_patches.sum(dim=1)  # [batch_size, feature_dim]
+            layer_embedding = weighted_patches.sum(dim=1)  # [batch_size, feature_dim].
             layer_embeddings.append(layer_embedding)
 
         # Average across layers with normalization.
@@ -294,10 +283,10 @@ class EnhancedViTFeatureExtractor:
 # ---------------------------------------------------------------------------
 
 def batched_crops(
-    img_tensor: torch.Tensor,    # (3, H, W) on GPU/CPU
-    centres: torch.Tensor,       # (N, 2) (x, y) on same device, float32
-    size: int,                  # Crop side in pixels
-) -> torch.Tensor:               # (N, 3, size, size)
+    img_tensor: torch.Tensor,    # (3, H, W) on GPU/CPU.
+    centres: torch.Tensor,       # (N, 2) (x, y) on same device, float32.
+    size: int,                  # Crop side in pixels.
+) -> torch.Tensor:               # (N, 3, size, size).
     """Vectorised GPU/CPU cropping with *no* Python loops.
 
     The function constructs, for each nucleus centre, a normalised sampling grid
@@ -314,15 +303,15 @@ def batched_crops(
 
     # Offsets grid relative to the nucleus centre (pixel units).
     delta = torch.linspace(-half, half, steps=size, device=centres.device)
-    yy, xx = torch.meshgrid(delta, delta, indexing="ij")              # (S, S)
-    base_grid = torch.stack((xx, yy), dim=-1)                          # (S, S, 2)
+    yy, xx = torch.meshgrid(delta, delta, indexing="ij")              # (S, S).
+    base_grid = torch.stack((xx, yy), dim=-1)                          # (S, S, 2).
 
     # Shift the base grid by every centre and broadcast to (N, S, S, 2).
     grid = base_grid.unsqueeze(0) + centres.view(n, 1, 1, 2)
 
     # Normalise pixel positions to the ``[-1, 1]`` range separately for x and y.
-    grid[..., 0] = grid[..., 0].mul_(2.0 / (W - 1)).add_(-1.0)  # x‑coords
-    grid[..., 1] = grid[..., 1].mul_(2.0 / (H - 1)).add_(-1.0)  # y‑coords
+    grid[..., 0] = grid[..., 0].mul_(2.0 / (W - 1)).add_(-1.0)  # x‑coords.
+    grid[..., 1] = grid[..., 1].mul_(2.0 / (H - 1)).add_(-1.0)  # y‑coords.
 
     # Input must be (N, C, H, W); replicate the 3‑channel slide without copy.
     crops = F.grid_sample(
@@ -496,7 +485,7 @@ def extract_and_save_patches(
     # ------------------------------------------------------------------
     # 4. Shared tensors
     # ------------------------------------------------------------------
-    img_t = TF.to_tensor(image).to(device, non_blocking=True)           # (3, H, W)
+    img_t = TF.to_tensor(image).to(device, non_blocking=True)           # (3, H, W).
     centroids_t = torch.as_tensor(centroids, device=device, dtype=torch.float32)
 
     normalise = transforms.Normalize(mean=processor.image_mean, std=processor.image_std)
@@ -524,17 +513,17 @@ def extract_and_save_patches(
         for i in tqdm(range(0, len(centroids), batch_size), desc=f"{s}px", unit="batch"):
             batch_cent = centroids_t[i : i + batch_size]
 
-            patches = batched_crops(img_t, batch_cent, s)  # (B, 3, s, s)
+            patches = batched_crops(img_t, batch_cent, s)  # (B, 3, s, s).
 
             model_size = getattr(model.config, "image_size", 224)
-            if isinstance(model_size, (list, tuple)):  # e.g. [224, 224]
+            if isinstance(model_size, (list, tuple)):  # e.g. [224, 224].
                 model_size = model_size[0]
-            if patches.shape[-1] != model_size:  # Upsample 16 → 224
+            if patches.shape[-1] != model_size:  # Upsample 16 → 224.
                 patches = F.interpolate(
                     patches, size=(model_size, model_size),
                     mode="bilinear", align_corners=False)
 
-            patches = normalise(patches)  # now 224 × 224
+            patches = normalise(patches)  # Now 224 × 224.
 
             with torch.inference_mode(), autocast_ctx:
                 out = model(pixel_values=patches)
@@ -569,8 +558,8 @@ def extract_and_save_patches(
 
             # Compute discriminative power using inter-class vs intra-class variance.
             # Higher discriminative power = better for clustering.
-            feature_variance = np.var(features, axis=0)  # Variance per feature dimension
-            feature_mean_variance = np.mean(feature_variance)  # Overall feature variance
+            feature_variance = np.var(features, axis=0)  # Variance per feature dimension.
+            feature_mean_variance = np.mean(feature_variance)  # Overall feature variance.
 
             # Weight by discriminative power (higher variance = more discriminative).
             scale_weights[s] = feature_mean_variance

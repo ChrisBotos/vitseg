@@ -9,10 +9,6 @@ Description:
     Creates publication-quality visualizations including side-by-side cluster maps,
     Sankey diagrams for cluster transitions, scatter plots of centroids,
     and heatmaps of overlap matrices.
-    
-    This module provides bioinformaticians with professional visualization tools
-    to communicate cluster alignment results effectively in scientific publications
-    and presentations.
 
 Dependencies:
     • Python >= 3.10.
@@ -27,39 +23,6 @@ Usage:
         --spatial_data data/metadata_complete.csv \
         --output comparison_analysis/visualizations/ \
         --samples IRI1 IRI2 IRI3
-
-Arguments:
-    --metrics_data     Path to alignment metrics JSON file.
-    --cluster_data     Path to ViT cluster assignments CSV.
-    --spatial_data     Path to spatial metadata CSV.
-    --output           Output directory for visualizations.
-    --samples          Sample names to include.
-
-Inputs:
-    • alignment_metrics.json    Statistical alignment results.
-    • spot_clusters.csv         ViT cluster assignments.
-    • metadata_complete.csv     Spatial cluster assignments.
-
-Outputs:
-    • cluster_comparison_maps.png    Side-by-side cluster visualizations.
-    • sankey_cluster_flow.html       Interactive cluster transition diagram.
-    • centroid_scatter.png           Cluster centroid analysis plot.
-    • overlap_heatmap.png            Cluster overlap matrix heatmap.
-    • silhouette_comparison.png      Silhouette score comparison.
-    • spatial_correlation_plot.png   Spatial autocorrelation visualization.
-
-Key Features:
-    • Consistent color schemes across all visualizations.
-    • Publication-quality output with customizable DPI and sizing.
-    • Interactive elements for detailed exploration.
-    • Scientific color palettes optimized for accessibility.
-    • Comprehensive legends and annotations.
-    • Statistical overlays and confidence intervals.
-
-Notes:
-    • All visualizations use consistent styling for professional appearance.
-    • Color schemes are optimized for colorblind accessibility.
-    • Interactive plots are saved in both static and interactive formats.
 """
 import argparse
 import json

@@ -1,28 +1,23 @@
 #!/usr/bin/env python3
 """
-Test script to verify the overlay mask fix for large label values.
+Author: Christos Botos.
+Affiliation: Leiden University Medical Center.
+Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Author: Christos Botos
-Email: hcty02@gmail.com
-Date: 2025-07-16
-
+Script Name: test_overlay_fix.py.
 Description:
-    This script tests the fix for the IndexError that occurs when mask labels
-    exceed the color lookup table size. It creates a test case with large
-    label values and verifies that the modulo operation works correctly.
+    Test script to verify the overlay mask fix for large label values.
+    Tests the fix for the IndexError that occurs when mask labels
+    exceed the color lookup table size, and verifies that the modulo
+    operation works correctly.
 
 Dependencies:
-    - numpy
-    - matplotlib (for visualization)
+    • Python >= 3.10.
+    • numpy.
+    • matplotlib.
 
 Usage:
     python test_overlay_fix.py
-
-Key Features:
-    - Creates test mask with large label values
-    - Tests color lookup with modulo operation
-    - Verifies no IndexError occurs
-    - Shows color mapping results
 """
 
 import numpy as np
@@ -51,9 +46,9 @@ def test_large_label_fix():
     print(f"DEBUG: Test mask values: {test_mask.flatten()}")
     
     # Create a limited color LUT (similar to the 1M limit in the original code).
-    max_lut_size = 1000001  # 1M + 1 for background
+    max_lut_size = 1000001  # 1M + 1 for background.
     lut = np.random.randint(0, 256, size=(max_lut_size, 3), dtype=np.uint8)
-    lut[0] = 0  # Background remains black
+    lut[0] = 0  # Background remains black.
     
     print(f"DEBUG: LUT shape: {lut.shape}")
     print(f"DEBUG: Max LUT index: {max_lut_size - 1}")
@@ -65,7 +60,7 @@ def test_large_label_fix():
         print("ERROR: Original approach should have failed but didn't!")
     except IndexError as e:
         print(f"DEBUG: Original approach failed as expected: {e}")
-    
+
     # Test the fixed approach with modulo operation.
     print("\nDEBUG: Testing fixed approach with modulo operation...")
     try:
@@ -102,11 +97,11 @@ def test_color_consistency():
     # Create test labels.
     large_labels = [1809533, 1810175, 1811693, 1810613, 2000000]
     max_lut_size = 1000001
-    
+
     # Create deterministic LUT.
     np.random.seed(42)
     lut = np.random.randint(0, 256, size=(max_lut_size, 3), dtype=np.uint8)
-    
+
     # Test consistency across multiple calls.
     colors1 = []
     colors2 = []
@@ -114,7 +109,7 @@ def test_color_consistency():
     for label in large_labels:
         safe_index = label % max_lut_size
         color1 = lut[safe_index]
-        color2 = lut[safe_index]  # Second call should give same result
+        color2 = lut[safe_index]  # Second call should give same result.
         
         colors1.append(color1)
         colors2.append(color2)
@@ -124,15 +119,13 @@ def test_color_consistency():
     # Verify consistency.
     for i, (c1, c2) in enumerate(zip(colors1, colors2)):
         assert np.array_equal(c1, c2), f"Color inconsistency for label {large_labels[i]}"
-    
+
     print("DEBUG: Color consistency test passed!")
     return True
 
 
 def main():
-    """
-    Main function to run all tests.
-    """
+    """Main function to run all tests."""
     print("=" * 60)
     print("TESTING OVERLAY MASK FIX FOR LARGE LABEL VALUES")
     print("=" * 60)

@@ -1,9 +1,9 @@
 """
 Author: Christos Botos.
-Affiliation: Leiden University Medical Center
+Affiliation: Leiden University Medical Center.
 Contact: botoschristos@gmail.com | linkedin.com/in/christos-botos-2369hcty3396 | github.com/ChrisBotos.
 
-Script Name: demo_enhanced_colors.py
+Script Name: demo_enhanced_colors.py.
 Description:
     Demonstration script showcasing the enhanced color generation system.
     Compares original vs enhanced color palettes and shows configuration options.
@@ -16,29 +16,6 @@ Dependencies:
 
 Usage:
     python demo_enhanced_colors.py
-
-Arguments:
-    None - runs demonstration automatically.
-
-Inputs:
-    • Configuration files (optional).
-    • Color generation parameters.
-
-Outputs:
-    • Visual comparison charts.
-    • Color palette demonstrations.
-    • Configuration examples.
-
-Key Features:
-    • Side-by-side comparison of color improvements.
-    • Interactive demonstration of custom color palettes.
-    • Configuration system showcase.
-    • Scientific visualization context examples.
-
-Notes:
-    • Generates visual outputs for easy comparison of color quality.
-    • Demonstrates practical usage scenarios for scientific imaging.
-    • Shows integration with existing pipeline components.
 """
 import traceback
 import matplotlib.pyplot as plt

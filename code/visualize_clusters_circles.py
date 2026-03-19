@@ -26,36 +26,6 @@ Usage:
         --radius 5 \
         --samples sham1 sham2 sham3 \
         --figsize 80 60
-
-Arguments:
-    --metadata         Path to metadata CSV file.
-    --output           Output path for the visualization.
-    --color-by         Column to use for coloring ('figure_idents' or 'banksy').
-    --radius           Radius of circles in pixels.
-    --samples          Sample names to include (e.g., IRI1 IRI2 IRI3 or sham1 sham2 sham3).
-    --figsize          Figure size as width height.
-    --dpi              DPI for output image.
-    --alpha            Transparency of circles (0-1).
-
-Inputs:
-    • metadata_complete.csv    Complete metadata with x, y, condition, sample, 
-                              banksy, and figure_idents columns.
-
-Outputs:
-    • cluster_visualization.png    High-quality visualization with colored circles.
-    • cluster_legend.png          Separate legend for color mapping.
-    • cluster_stats.txt           Statistics about clusters and samples.
-
-Key Features:
-    • High-contrast color palettes optimized for scientific visualization.
-    • Separate subplots for each IRI sample for comparative analysis.
-    • Publication-quality output with customizable DPI and sizing.
-    • Comprehensive statistics and legend generation.
-
-Notes:
-    • Processes any specified samples (IRI, sham, control, etc.).
-    • Circles are positioned using exact x,y coordinates from metadata.
-    • Missing values in color-by column are handled gracefully.
 """
 import argparse
 import traceback

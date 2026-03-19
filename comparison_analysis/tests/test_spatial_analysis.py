@@ -8,10 +8,6 @@ Description:
     Comprehensive test suite for spatial analysis module.
     Tests spatial autocorrelation calculations, LISA analysis, and
     Getis-Ord G statistics with synthetic spatial data scenarios.
-    
-    This test suite validates the accuracy of spatial statistics
-    calculations and ensures proper handling of various spatial
-    patterns for bioinformaticians analyzing tissue organization.
 
 Dependencies:
     • Python >= 3.10.
@@ -20,18 +16,6 @@ Dependencies:
 
 Usage:
     pytest comparison_analysis/tests/test_spatial_analysis.py -v
-
-Key Features:
-    • Synthetic spatial pattern generation.
-    • Spatial autocorrelation validation.
-    • Edge case handling for sparse data.
-    • Performance testing with large datasets.
-    • Statistical significance validation.
-
-Notes:
-    • Tests cover clustered, dispersed, and random spatial patterns.
-    • Validates proper handling of coordinate systems.
-    • Ensures statistical significance calculations are accurate.
 """
 import pytest
 import numpy as np
