@@ -15,7 +15,7 @@ Dependencies:
     • json (standard library).
 
 Usage:
-    from color_config import ColorConfig, load_color_config
+    from vitseg.utilities.color_config import ColorConfig, load_color_config
     config = load_color_config("config.json")
     colors = config.generate_palette(n=10)
 """
@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 
 LOGGER = logging.getLogger(__name__)
 
-from code.generate_contrast_colors import generate_color_palette
+from vitseg.utilities.color_generation import generate_color_palette
 
 
 @dataclass

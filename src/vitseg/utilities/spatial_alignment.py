@@ -44,7 +44,7 @@ console = Console()
 
 # Try to import enhanced color generation.
 try:
-    from generate_contrast_colors import generate_color_palette, colors_to_hex_list
+    from vitseg.utilities.color_generation import generate_color_palette, colors_to_hex_list
     ENHANCED_COLORS_AVAILABLE = True
     console.print("[green]✓[/green] Enhanced color generation available")
 except ImportError:

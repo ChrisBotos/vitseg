@@ -60,7 +60,7 @@ from sklearn.preprocessing import StandardScaler
 
 # Import color generation utilities.
 try:
-    from generate_contrast_colors import generate_color_palette, colors_to_hex_list
+    from vitseg.utilities.color_generation import generate_color_palette, colors_to_hex_list
 except ImportError:
     print("WARNING: generate_contrast_colors not found, using basic color generation")
     

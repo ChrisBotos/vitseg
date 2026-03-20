@@ -23,13 +23,7 @@ import numpy as np
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-import sys
-import os
-
-# Add the code directory to the path for imports.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'code'))
-
-from visualize_clusters_circles import (
+from vitseg.visualization.cluster_circles import (
     generate_high_contrast_colors,
     load_and_filter_data,
     create_cluster_visualization,

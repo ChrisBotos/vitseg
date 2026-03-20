@@ -31,7 +31,7 @@ import tifffile as tiff
 import psutil
 
 # Import the overlay functions to test.
-from code.overlay_masks import (
+from vitseg.visualization.overlay_masks import (
     OverlayConfig,
     overlay,
     calculate_optimal_batch_size,

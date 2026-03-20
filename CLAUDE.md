@@ -15,52 +15,62 @@ This file provides **mandatory rules** and **project context** for Claude Code w
 **Core pipeline stages:**
 
 ```
-1. Filter segmentation masks     (filter_masks.py)
-2. Convert to binary TIFF        (white_segmentation_masks_on_black_background.py)
-3. Extract ViT embeddings        (segmentation_mask_dynamic_patches_vit.py / uniform_tiling_vit.py)
-4. Filter features by scale      (filter_features_by_box_size.py)
-5. Cluster embeddings            (cluster_vit_patches_memopt.py / cluster_uniform_tiles_memopt.py)
+1. Filter segmentation masks     (vitseg.preprocessing.filter_masks)
+2. Convert to binary TIFF        (vitseg.preprocessing.binary_conversion)
+3. Extract ViT embeddings        (vitseg.extraction.dynamic_patches_vit / uniform_tiling_vit)
+4. Filter features by scale      (vitseg.clustering.filter_features)
+5. Cluster embeddings            (vitseg.clustering.cluster_dynamic_patches / cluster_uniform_tiles)
 ```
 
 ---
 
 ## **2. Directory Structure**
 
+The project uses a **src-layout** Python package (`vitseg`) installable via `pip install -e .`.
+
 ```
 ViT-on-Segmentation-Masks/
-├── code/                                   # Main Python source code
-│   ├── __init__.py                        # Package initialization
-│   ├── segmentation_mask_dynamic_patches_vit.py   # Dynamic patch ViT extraction
-│   ├── uniform_tiling_vit.py              # Uniform grid ViT extraction
-│   ├── cluster_vit_patches_memopt.py      # Memory-efficient clustering (dynamic)
-│   ├── cluster_uniform_tiles_memopt.py    # Memory-efficient clustering (uniform)
-│   ├── cluster_spots_by_nuclei_features.py # Spot-nuclei clustering analysis
-│   ├── filter_masks.py                    # Mask quality control filtering
-│   ├── filter_features_by_box_size.py     # Multi-scale feature filtering
-│   ├── overlay_masks.py                   # High-quality mask overlays
-│   ├── visualize_clusters_circles.py      # Publication-quality circle visualization
-│   ├── color_config.py                    # Color palette management
-│   ├── generate_contrast_colors.py        # High-contrast color generation
-│   ├── verify_spatial_alignment.py        # Spatial alignment verification
-│   ├── prepare_vit_data_for_verification.py # ViT data preparation
-│   ├── run_cluster_comparison_simple.py   # Simple cluster comparison
-│   ├── crop.py                            # Image cropping utility
-│   └── white_segmentation_masks_on_black_background.py  # Mask-to-binary conversion
-├── comparison_analysis/                   # ViT-Spatial cluster comparison framework
-│   ├── scripts/                           # Core analysis modules
-│   │   ├── cluster_metrics.py             # ARI, NMI, silhouette analysis
-│   │   ├── spatial_analysis.py            # Moran's I, LISA, Getis-Ord G
-│   │   ├── visualization_suite.py         # Publication-quality visualizations
-│   │   └── main_analysis.py               # Complete workflow orchestration
-│   ├── tests/                             # Comparison analysis test suite
-│   ├── results/                           # Analysis outputs (gitignored)
-│   ├── visualizations/                    # Generated figures (gitignored)
-│   └── reports/                           # Scientific reports (gitignored)
-├── tests/                                 # Main test suite
+├── src/vitseg/                             # Main package (src-layout)
+│   ├── __init__.py                        # Public API, __version__
+│   ├── cli.py                             # CLI entry point (vitseg command)
+│   ├── preprocessing/                     # Pipeline stages 1-2
+│   │   ├── filter_masks.py               # Stage 1: QA mask filtering
+│   │   └── binary_conversion.py          # Stage 2: mask-to-binary TIFF
+│   ├── extraction/                        # Pipeline stage 3
+│   │   ├── dynamic_patches_vit.py        # Stage 3a: per-nuclei ViT extraction
+│   │   └── uniform_tiling_vit.py         # Stage 3b: grid-based ViT extraction
+│   ├── clustering/                        # Pipeline stages 4-5
+│   │   ├── filter_features.py            # Stage 4: filter features by box size
+│   │   ├── cluster_dynamic_patches.py    # Stage 5a: cluster dynamic patches
+│   │   ├── cluster_uniform_tiles.py      # Stage 5b: cluster uniform tiles
+│   │   └── cluster_spots_by_nuclei.py    # Spot-nuclei clustering analysis
+│   ├── visualization/                     # All visualization modules
+│   │   ├── overlay_masks.py              # Mask overlay visualization
+│   │   ├── cluster_circles.py            # Circle-based cluster visualization
+│   │   └── crop.py                       # Image cropping utility
+│   ├── comparison/                        # Cluster comparison framework
+│   │   ├── cluster_metrics.py            # ARI, NMI, silhouette
+│   │   ├── spatial_analysis.py           # Moran's I, LISA, Getis-Ord G
+│   │   ├── visualization_suite.py        # Comparison visualizations
+│   │   └── main_analysis.py              # Orchestration
+│   └── utilities/                         # Shared utilities
+│       ├── color_generation.py           # High-contrast color generation
+│       ├── color_config.py               # Color palette configuration
+│       ├── spatial_alignment.py          # Spatial alignment verification
+│       ├── prepare_vit_data.py           # ViT data preparation
+│       ├── cluster_comparison_simple.py  # Simple cluster comparison
+│       └── assess_vit_quality.py         # ViT quality assessment
+├── tests/                                 # All tests (flat, prefixed by module)
+├── archive/                               # Orphaned files (preserved, not in package)
+├── comparison_analysis/                   # Output directories (gitignored)
+│   ├── results/                           # Analysis outputs
+│   ├── visualizations/                    # Generated figures
+│   └── reports/                           # Scientific reports
 ├── data/                                  # Input data (gitignored)
 ├── masks/                                 # Segmentation masks (gitignored)
 ├── results/                               # All analysis outputs (gitignored)
-├── pipeline.sh                            # Main analysis pipeline
+├── pyproject.toml                         # Build config, metadata, CLI entry points
+├── pipeline.sh                            # Main analysis pipeline (bash wrapper)
 ├── requirements.txt                       # Python dependencies (Python 3.10)
 ├── setup_venv310.py                       # Automated environment setup
 ├── test_venv310.py                        # Environment verification
@@ -85,10 +95,16 @@ The pipeline is controlled by step flags at the top of `pipeline.sh`. Set each t
 - `RUN_FEATURE_FILTERING` — Step 3.4: Filter features by box sizes.
 - `RUN_CLUSTERING` — Step 3.5: Cluster the embeddings.
 
+### **Python CLI**
+```bash
+pip install -e .
+vitseg --help
+vitseg --steps filter_masks binary vit_extraction filtering clustering
+```
+
 ### **Run Tests**
 ```bash
 pytest tests/ -v
-pytest comparison_analysis/tests/ -v
 ```
 
 ---
@@ -188,7 +204,7 @@ When finding an issue, Claude must:
 
 For **any** nontrivial code change:
 
-- Add or update tests under `tests/` or `comparison_analysis/tests/`.
+- Add or update tests under `tests/`.
 - Tests must cover:
   - Input validation and edge cases.
   - Coordinate handling and transformations.
@@ -200,14 +216,14 @@ For **any** nontrivial code change:
 
 ```bash
 pytest tests/ -v
-pytest comparison_analysis/tests/ -v
 ```
 
 ### **5.6 File Organization**
 
-- All source code lives in `code/` (flat structure, no subdirectories).
-- Comparison analysis scripts live in `comparison_analysis/scripts/`.
-- Tests mirror the source structure: `tests/test_<module_name>.py`.
+- All source code lives in `src/vitseg/` organized by functional subpackage.
+- Subpackages: `preprocessing`, `extraction`, `clustering`, `visualization`, `comparison`, `utilities`.
+- All imports use the `vitseg.subpackage.module` pattern (e.g. `from vitseg.utilities.color_generation import generate_color_palette`).
+- Tests are flat under `tests/`: `tests/test_<module_name>.py`.
 - Keep public function signatures **stable** unless explicitly changing them everywhere:
   - Update all call sites.
   - Update docstrings.
@@ -327,11 +343,11 @@ Usage:
 
 ### **Working with This Codebase**
 
-- **Two ViT extraction modes exist:** Dynamic patches (per-nuclei, `segmentation_mask_dynamic_patches_vit.py`) and uniform tiling (`uniform_tiling_vit.py`). The pipeline flag `USE_DYNAMIC_PATCHES` controls which is used. NEVER confuse them.
-- **Two clustering scripts exist:** `cluster_vit_patches_memopt.py` (for dynamic patches, requires label maps) and `cluster_uniform_tiles_memopt.py` (for uniform tiles, works with tile coordinates only). They are NOT interchangeable.
+- **Two ViT extraction modes exist:** Dynamic patches (per-nuclei, `vitseg.extraction.dynamic_patches_vit`) and uniform tiling (`vitseg.extraction.uniform_tiling_vit`). The pipeline flag `USE_DYNAMIC_PATCHES` controls which is used. NEVER confuse them.
+- **Two clustering modules exist:** `vitseg.clustering.cluster_dynamic_patches` (for dynamic patches, requires label maps) and `vitseg.clustering.cluster_uniform_tiles` (for uniform tiles, works with tile coordinates only). They are NOT interchangeable.
 - **Coordinate systems differ.** ViT coordinates are small pixel-based (X: 2–502, Y: 1–551). Spatial transcriptomics coordinates are large tissue-based (X: 4,662–20,782, Y: 5,388–25,028). Always verify which coordinate system is in use before combining data.
 - **Results directory is large.** Many subdirectories with output files. NEVER attempt to list or read it in full.
-- **The `code/` directory is flat.** All source files are at the top level of `code/`. There are no subdirectories for different modules.
+- **Source code is in `src/vitseg/`** organized by functional subpackage. All imports use the `vitseg.subpackage.module` pattern.
 - **Feature files come in two formats:** CSV and NPY. The clustering scripts prefer NPY for speed but fall back to CSV. After feature filtering, only CSV files exist (no NPY).
 
 ### **Working with Claude Code Effectively**
@@ -346,5 +362,5 @@ Usage:
 
 - **Stem mismatch in pipeline.sh:** The pipeline derives file stems from the binary image name. If a script outputs files with a different naming convention, the next pipeline stage will fail with "file not found".
 - **Y-axis flipping:** Some visualizations flip the Y axis, others do not. The `--flip-y` flag controls this. Inconsistent use produces mirrored/inverted results.
-- **Memory exhaustion:** Large TIFF images (10,000+ x 10,000+ pixels) can exhaust RAM if loaded fully. Always use the memory-efficient (`*_memopt.py`) variants.
+- **Memory exhaustion:** Large TIFF images (10,000+ x 10,000+ pixels) can exhaust RAM if loaded fully. The clustering modules already use memory-efficient streaming patterns.
 - **Cluster count mismatch:** The `K_INIT` parameter in `pipeline.sh` must match expectations in downstream analysis scripts that assume a specific number of clusters.

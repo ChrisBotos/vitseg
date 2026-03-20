@@ -92,3 +92,6 @@ overlay.tif
 
 # Augment.
 .augment/
+
+# Archive (orphaned files preserved for reference).
+# archive/

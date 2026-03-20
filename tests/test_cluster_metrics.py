@@ -24,12 +24,7 @@ import traceback
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 import tempfile
-import sys
-
-# Add the scripts directory to the path.
-sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
-
-from cluster_metrics import (
+from vitseg.comparison.cluster_metrics import (
     load_and_align_data, align_coordinates, calculate_adjusted_rand_index,
     calculate_normalized_mutual_information, calculate_silhouette_analysis,
     create_confusion_matrix_analysis, calculate_effect_sizes

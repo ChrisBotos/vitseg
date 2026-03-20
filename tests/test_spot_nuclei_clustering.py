@@ -26,10 +26,7 @@ import pandas as pd
 from unittest.mock import patch, MagicMock
 
 # Import functions from the main script.
-import sys
-sys.path.append(str(Path(__file__).parent.parent / 'code'))
-
-from cluster_spots_by_nuclei_features import (
+from vitseg.clustering.cluster_spots_by_nuclei import (
     load_data, assign_nuclei_to_spots, aggregate_features_per_spot,
     cluster_spots, generate_high_contrast_colors
 )

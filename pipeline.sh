@@ -43,13 +43,13 @@ RUN_CLUSTERING=True          # Step 3.5: Cluster the embeddings.
 #
 # Dynamic patches (True):
 #   • Extracts patches centered on filtered nuclei masks.
-#   • Uses segmentation_mask_dynamic_patches_vit.py.
+#   • Uses vitseg.extraction.dynamic_patches_vit.
 #   • Requires filtered masks and segmentation maps.
 #   • Ideal for individual cell morphology analysis.
 #
 # Uniform tiling (False):
 #   • Splits entire binary image into regular grid tiles.
-#   • Uses uniform_tiling_vit.py.
+#   • Uses vitseg.extraction.uniform_tiling_vit.
 #   • Works directly with binary mask images.
 #   • Ideal for tissue architecture and spatial pattern analysis.
 #
@@ -173,7 +173,7 @@ printf '\n========================================\n'
 ########################################
 if [[ "${RUN_FILTER_MASKS}" == "True" ]]; then
     printf '\n➤ Filtering segmentation masks …\n'
-    python code/filter_masks.py \
+    python -m vitseg.preprocessing.filter_masks \
         --input             "${RAW_MASKS}" \
         --results-dir       "${FILTER_DIR}" \
         --output-prefix     "filtered_" \
@@ -197,7 +197,7 @@ fi
 ########################################
 if [[ "${RUN_BINARY_CONVERSION}" == "True" ]]; then
     printf '\n➤ Building binary mask image …\n'
-    python code/white_segmentation_masks_on_black_background.py \
+    python -m vitseg.preprocessing.binary_conversion \
            --mask   "${RAW_MASKS}" \
            --output "${BINARY_IMAGE}"
 else
@@ -227,7 +227,7 @@ if [[ "${RUN_VIT_EXTRACTION}" == "True" ]]; then
         PATCH_SIZE_ARGS=()
         for S in "${PATCH_SIZES[@]}"; do PATCH_SIZE_ARGS+=("$S"); done
 
-        python code/segmentation_mask_dynamic_patches_vit.py \
+        python -m vitseg.extraction.dynamic_patches_vit \
             --image            "${BINARY_IMAGE}" \
             --mask             "${REQUIRED_MASKS}" \
             --label_map        "${RAW_MASKS}" \
@@ -256,7 +256,7 @@ if [[ "${RUN_VIT_EXTRACTION}" == "True" ]]; then
             UNIFORM_BATCH_SIZE=256
         fi
 
-        python code/uniform_tiling_vit.py \
+        python -m vitseg.extraction.uniform_tiling_vit \
             --image            "${BINARY_IMAGE}" \
             --output           "${PATCH_DIR}" \
             --patch_sizes      "${PATCH_SIZES[@]}" \
@@ -310,7 +310,7 @@ if [[ "${RUN_FEATURE_FILTERING}" == "True" ]]; then
     printf '  • Selected scales: %s\n' "${FILTER_BOX_SIZES[*]}"
     printf '  • Output directory: %s\n' "${FILTERED_DIR}"
 
-    python code/filter_features_by_box_size.py \
+    python -m vitseg.clustering.filter_features \
         --input         "${FEATS_CSV}" \
         --output        "${FILTERED_DIR}" \
         --box_sizes     "${FILTER_BOX_SIZES[@]}" \
@@ -359,7 +359,7 @@ if [[ "${RUN_CLUSTERING}" == "True" ]]; then
 
     if [[ "${USE_DYNAMIC_PATCHES}" == "True" ]]; then
         # Dynamic patches clustering (uses filtered labels and segmentation masks).
-        python code/cluster_vit_patches_memopt.py \
+        python -m vitseg.clustering.cluster_dynamic_patches \
             --image         "${IMAGE}" \
             --labels        "${FILTER_DIR}/filtered_passed_labels.npy" \
             --label_map     "${RAW_MASKS}" \
@@ -375,7 +375,7 @@ if [[ "${RUN_CLUSTERING}" == "True" ]]; then
             --downsample    "${DOWNSAMPLE}"
     else
         # Uniform tiling clustering (uses tile coordinates directly).
-        python code/cluster_uniform_tiles_memopt.py \
+        python -m vitseg.clustering.cluster_uniform_tiles \
             --image         "${BINARY_IMAGE}" \
             --coords        "${FILTERED_COORDS_CSV}" \
             --features_npy  "${FILTERED_FEATS_NPY}" \
