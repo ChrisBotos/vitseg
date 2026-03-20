@@ -23,7 +23,7 @@ import numpy as np
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from vigseg.visualization.cluster_circles import (
+from vitseg.visualization.cluster_circles import (
     generate_high_contrast_colors,
     load_and_filter_data,
     create_cluster_visualization,

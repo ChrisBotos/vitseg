@@ -1,5 +1,5 @@
 ###############################################################################
-# environment.yml – conda environment for vigseg (Python 3.10)
+# environment.yml – conda environment for vitseg (Python 3.10)
 #
 # Create:
 #     conda env create -f environment.yml

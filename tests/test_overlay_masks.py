@@ -30,7 +30,7 @@ import numpy as np
 import tifffile as tiff
 
 # Import the rewritten overlay_masks module.
-from vigseg.visualization.overlay_masks import OverlayConfig, overlay, generate_label_colors
+from vitseg.visualization.overlay_masks import OverlayConfig, overlay, generate_label_colors
 
 
 def create_test_image(height: int = 2048, width: int = 2048) -> np.ndarray:

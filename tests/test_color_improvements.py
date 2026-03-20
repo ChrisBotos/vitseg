@@ -21,7 +21,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from vigseg.utilities.color_generation import generate_color_palette, colors_to_hex_list, calculate_contrast_ratio
+from vitseg.utilities.color_generation import generate_color_palette, colors_to_hex_list, calculate_contrast_ratio
 
 
 def test_color_contrast_ratios():

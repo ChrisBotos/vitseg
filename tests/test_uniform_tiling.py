@@ -78,7 +78,7 @@ def test_uniform_tiling_extraction():
         batch_size = 16
         image_size = 256
 
-        from vigseg.extraction.uniform_tiling_vit import extract_uniform_features, UniformTileDataset
+        from vitseg.extraction.uniform_tiling_vit import extract_uniform_features, UniformTileDataset
         import torch
         from transformers import ViTImageProcessor, ViTModel
 
@@ -162,7 +162,7 @@ def test_uniform_tiling_extraction():
 
 def test_clustering_compatibility():
     """Test compatibility with the clustering pipeline."""
-    from vigseg.clustering.cluster_uniform_tiles import parse_arguments
+    from vitseg.clustering.cluster_uniform_tiles import parse_arguments
 
     # Test argument parsing.
     test_args = [

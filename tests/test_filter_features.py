@@ -33,7 +33,7 @@ import numpy as np
 import pandas as pd
 
 # Import the functions to test.
-from vigseg.clustering.filter_features import detect_feature_dimensions, filter_features_by_scales
+from vitseg.clustering.filter_features import detect_feature_dimensions, filter_features_by_scales
 
 
 class TestFilterFeaturesByBoxSize:

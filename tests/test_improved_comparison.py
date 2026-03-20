@@ -1,10 +1,10 @@
-"""Tests for vigseg.comparison.improved_comparison."""
+"""Tests for vitseg.comparison.improved_comparison."""
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from vigseg.comparison.improved_comparison import (
+from vitseg.comparison.improved_comparison import (
     ZONE_MAP,
     assign_samples,
     majority_vote_match,

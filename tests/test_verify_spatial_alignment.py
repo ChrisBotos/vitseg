@@ -24,7 +24,7 @@ import tempfile
 import json
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
-from vigseg.utilities.spatial_alignment import (
+from vitseg.utilities.spatial_alignment import (
     load_and_validate_data, analyze_coordinate_systems,
     generate_consistent_colors, save_diagnostic_report,
     save_alignment_statistics

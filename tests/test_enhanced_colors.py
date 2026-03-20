@@ -25,13 +25,13 @@ from pathlib import Path
 import time
 import json
 
-from vigseg.utilities.color_generation import (
+from vitseg.utilities.color_generation import (
     generate_color_palette,
     colors_to_hex_list,
     get_predefined_vibrant_colors,
     calculate_contrast_ratio
 )
-from vigseg.utilities.color_config import ColorConfig, load_color_config, save_color_config, create_example_config
+from vitseg.utilities.color_config import ColorConfig, load_color_config, save_color_config, create_example_config
 
 
 def test_vibrant_color_improvements():

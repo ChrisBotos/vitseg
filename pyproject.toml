@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vigseg"
+name = "vitseg"
 version = "1.0.0"
-description = "vigseg: Vision Transformer analysis pipeline for kidney tissue samples."
+description = "vitseg: Vision Transformer analysis pipeline for kidney tissue samples."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -48,14 +48,14 @@ dev = ["pytest>=8.0.0"]
 gpu = ["cupy-cuda12x>=13.5"]
 
 [project.scripts]
-vigseg = "vigseg.cli:main"
+vitseg = "vitseg.cli:main"
 
 [project.urls]
-Repository = "https://github.com/ChrisBotos/vigseg"
+Repository = "https://github.com/ChrisBotos/vitseg"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["vigseg*"]
+include = ["vitseg*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

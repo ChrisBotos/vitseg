@@ -1,4 +1,4 @@
-# vigseg
+# vitseg
 
 A Vision Transformer pipeline for unsupervised tissue-region discovery in kidney microscopy. It extracts multi-scale DINO ViT-S/16 embeddings from nuclei segmentation masks, clusters them with MiniBatchKMeans, and visualises the results as coloured overlays on the original tissue image.
 
@@ -12,7 +12,7 @@ A Vision Transformer pipeline for unsupervised tissue-region discovery in kidney
 
 ## What it does
 
-Given a high-resolution tissue image and a uint32 nuclei segmentation mask, vigseg:
+Given a high-resolution tissue image and a uint32 nuclei segmentation mask, vitseg:
 
 1. **Filters** nuclei by morphological quality (area, circularity, solidity, eccentricity).
 2. **Converts** the label map to a binary TIFF for ViT input.
@@ -41,11 +41,11 @@ pip install -e .
 ./pipeline.sh
 
 # Or use the Python CLI.
-vigseg --steps filter_masks binary vit_extraction filtering clustering
+vitseg --steps filter_masks binary vit_extraction filtering clustering
 
 # Or run individual stages.
-python -m vigseg.preprocessing.filter_masks --input masks/segmentation_masks.npy --results-dir results/
-python -m vigseg.extraction.dynamic_patches_vit --image data/binary.tif --mask results/filtered_passed_labels.npy --label_map masks/segmentation_masks.npy --output results/ --patch_sizes 16 32 64 --save_numpy --no_compile
+python -m vitseg.preprocessing.filter_masks --input masks/segmentation_masks.npy --results-dir results/
+python -m vitseg.extraction.dynamic_patches_vit --image data/binary.tif --mask results/filtered_passed_labels.npy --label_map masks/segmentation_masks.npy --output results/ --patch_sizes 16 32 64 --save_numpy --no_compile
 ```
 
 ---
@@ -84,8 +84,8 @@ segmentation_masks.npy
 ## Project structure
 
 ```
-vigseg/
-├── src/vigseg/           # Main package (pip-installable)
+vitseg/
+├── src/vitseg/           # Main package (pip-installable)
 │   ├── cli.py            # CLI entry point
 │   ├── preprocessing/    # Stages 1-2: mask filtering, binary conversion
 │   ├── extraction/       # Stage 3:  ViT embedding extraction
@@ -164,10 +164,10 @@ This tool was developed for studying **Ischemia/Reperfusion Kidney Injury** at t
 ## Citation
 
 ```bibtex
-@software{botos2025vigseg,
+@software{botos2025vitseg,
   author = {Botos, Christos},
-  title  = {vigseg: Vision Transformer Analysis of Kidney Tissue Segmentation Masks},
+  title  = {vitseg: Vision Transformer Analysis of Kidney Tissue Segmentation Masks},
   year   = {2025},
-  url    = {https://github.com/ChrisBotos/vigseg}
+  url    = {https://github.com/ChrisBotos/vitseg}
 }
 ```

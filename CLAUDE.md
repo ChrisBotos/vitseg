@@ -1,4 +1,4 @@
-# CLAUDE.md – vigseg
+# CLAUDE.md – vitseg
 
 This file provides **mandatory rules** and **project context** for Claude Code when editing or generating code in this repository.
 
@@ -6,7 +6,7 @@ This file provides **mandatory rules** and **project context** for Claude Code w
 
 ## **1. Project Overview**
 
-**vigseg** is a Vision Transformer analysis pipeline for kidney tissue samples. It extracts multi-scale ViT embeddings from microscopy images, clusters them, and compares the results against spatial transcriptomics data. The biological focus is Ischemia/Reperfusion Kidney Injury (I/R) at three time points (10 hours, 2 days, 14 days).
+**vitseg** is a Vision Transformer analysis pipeline for kidney tissue samples. It extracts multi-scale ViT embeddings from microscopy images, clusters them, and compares the results against spatial transcriptomics data. The biological focus is Ischemia/Reperfusion Kidney Injury (I/R) at three time points (10 hours, 2 days, 14 days).
 
 **This is a standalone repository.** It does not depend on or interact with any sibling repositories.
 
@@ -15,24 +15,24 @@ This file provides **mandatory rules** and **project context** for Claude Code w
 **Core pipeline stages:**
 
 ```
-1. Filter segmentation masks     (vigseg.preprocessing.filter_masks)
-2. Convert to binary TIFF        (vigseg.preprocessing.binary_conversion)
-3. Extract ViT embeddings        (vigseg.extraction.dynamic_patches_vit / uniform_tiling_vit)
-4. Filter features by scale      (vigseg.clustering.filter_features)
-5. Cluster embeddings            (vigseg.clustering.cluster_dynamic_patches / cluster_uniform_tiles)
+1. Filter segmentation masks     (vitseg.preprocessing.filter_masks)
+2. Convert to binary TIFF        (vitseg.preprocessing.binary_conversion)
+3. Extract ViT embeddings        (vitseg.extraction.dynamic_patches_vit / uniform_tiling_vit)
+4. Filter features by scale      (vitseg.clustering.filter_features)
+5. Cluster embeddings            (vitseg.clustering.cluster_dynamic_patches / cluster_uniform_tiles)
 ```
 
 ---
 
 ## **2. Directory Structure**
 
-The project uses a **src-layout** Python package (`vigseg`) installable via `pip install -e .`.
+The project uses a **src-layout** Python package (`vitseg`) installable via `pip install -e .`.
 
 ```
-vigseg/
-├── src/vigseg/                             # Main package (src-layout)
+vitseg/
+├── src/vitseg/                             # Main package (src-layout)
 │   ├── __init__.py                        # Public API, __version__
-│   ├── cli.py                             # CLI entry point (vigseg command)
+│   ├── cli.py                             # CLI entry point (vitseg command)
 │   ├── preprocessing/                     # Pipeline stages 1-2
 │   │   ├── filter_masks.py               # Stage 1: QA mask filtering
 │   │   └── binary_conversion.py          # Stage 2: mask-to-binary TIFF
@@ -97,8 +97,8 @@ The pipeline is controlled by step flags at the top of `pipeline.sh`. Set each t
 ### **Python CLI**
 ```bash
 pip install -e .
-vigseg --help
-vigseg --steps filter_masks binary vit_extraction filtering clustering
+vitseg --help
+vitseg --steps filter_masks binary vit_extraction filtering clustering
 ```
 
 ### **Run Tests**
@@ -226,9 +226,9 @@ pytest tests/ -v
 
 ### **5.6 File Organization**
 
-- All source code lives in `src/vigseg/` organized by functional subpackage.
+- All source code lives in `src/vitseg/` organized by functional subpackage.
 - Subpackages: `preprocessing`, `extraction`, `clustering`, `visualization`, `comparison`, `utilities`.
-- All imports use the `vigseg.subpackage.module` pattern (e.g. `from vigseg.utilities.color_generation import generate_color_palette`).
+- All imports use the `vitseg.subpackage.module` pattern (e.g. `from vitseg.utilities.color_generation import generate_color_palette`).
 - Tests are flat under `tests/`: `tests/test_<module_name>.py`.
 - Keep public function signatures **stable** unless explicitly changing them everywhere:
   - Update all call sites.
@@ -349,11 +349,11 @@ Usage:
 
 ### **Working with This Codebase**
 
-- **Two ViT extraction modes exist:** Dynamic patches (per-nuclei, `vigseg.extraction.dynamic_patches_vit`) and uniform tiling (`vigseg.extraction.uniform_tiling_vit`). The pipeline flag `USE_DYNAMIC_PATCHES` controls which is used. NEVER confuse them.
-- **Two clustering modules exist:** `vigseg.clustering.cluster_dynamic_patches` (for dynamic patches, requires label maps) and `vigseg.clustering.cluster_uniform_tiles` (for uniform tiles, works with tile coordinates only). They are NOT interchangeable.
+- **Two ViT extraction modes exist:** Dynamic patches (per-nuclei, `vitseg.extraction.dynamic_patches_vit`) and uniform tiling (`vitseg.extraction.uniform_tiling_vit`). The pipeline flag `USE_DYNAMIC_PATCHES` controls which is used. NEVER confuse them.
+- **Two clustering modules exist:** `vitseg.clustering.cluster_dynamic_patches` (for dynamic patches, requires label maps) and `vitseg.clustering.cluster_uniform_tiles` (for uniform tiles, works with tile coordinates only). They are NOT interchangeable.
 - **Coordinate systems differ.** ViT coordinates are small pixel-based (X: 2–502, Y: 1–551). Spatial transcriptomics coordinates are large tissue-based (X: 4,662–20,782, Y: 5,388–25,028). Always verify which coordinate system is in use before combining data.
 - **Results directory is large.** Many subdirectories with output files. NEVER attempt to list or read it in full.
-- **Source code is in `src/vigseg/`** organized by functional subpackage. All imports use the `vigseg.subpackage.module` pattern.
+- **Source code is in `src/vitseg/`** organized by functional subpackage. All imports use the `vitseg.subpackage.module` pattern.
 - **Feature files come in two formats:** CSV and NPY. The clustering scripts prefer NPY for speed but fall back to CSV. After feature filtering, only CSV files exist (no NPY).
 
 ### **Working with Claude Code Effectively**
