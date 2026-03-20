@@ -30,7 +30,7 @@ import numpy as np
 import tifffile as tiff
 
 # Import the rewritten overlay_masks module.
-from code.overlay_masks import OverlayConfig, create_memory_efficient_overlay, generate_label_colors
+from code.overlay_masks import OverlayConfig, overlay, generate_label_colors
 
 
 def create_test_image(height: int = 2048, width: int = 2048) -> np.ndarray:
@@ -171,7 +171,7 @@ def test_overlay_creation():
             alpha=0.4
         )
         
-        create_memory_efficient_overlay(
+        overlay(
             image_path=image_path,
             mask_path=mask_path,
             output_path=output_path,
@@ -200,7 +200,7 @@ def test_overlay_creation():
                 memory_limit_mb=2048
             )
             
-            create_memory_efficient_overlay(
+            overlay(
                 image_path=image_path,
                 mask_path=mask_path,
                 output_path=gpu_output_path,

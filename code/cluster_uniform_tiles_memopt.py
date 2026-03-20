@@ -53,7 +53,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from PIL import Image
-from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import davies_bouldin_score, silhouette_score
@@ -94,6 +93,8 @@ except ImportError:
     def colors_to_hex_list(colors):
         """Convert RGBA colors to hex format."""
         return [f"#{r:02x}{g:02x}{b:02x}" for r, g, b, a in colors]
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _slice_region(height: int, width: int, region: Tuple[float, float, float, float]) -> Tuple[int, int, int, int]:
@@ -154,8 +155,8 @@ def save_tile_overlay(
         patch_size: Size of tiles in pixels.
         down: Downsampling factor for memory efficiency.
     """
-    print(f"DEBUG: Creating tile overlay with {len(color_palette)} colors")
-    print(f"DEBUG: Region: {region}, downsample: {down}")
+    LOGGER.debug(f"Creating tile overlay with {len(color_palette)} colors")
+    LOGGER.debug(f"Region: {region}, downsample: {down}")
 
     # Load and crop base image.
     base_full = Image.open(image_path).convert('RGBA')
@@ -207,7 +208,7 @@ def save_tile_overlay(
     composite.save(out_path)
 
     logging.info(f'Tile overlay saved with {tiles_drawn} colored tiles → {out_path}')
-    print(f"DEBUG: Overlay dimensions: {composite.size}, tiles drawn: {tiles_drawn}")
+    LOGGER.debug(f"Overlay dimensions: {composite.size}, tiles drawn: {tiles_drawn}")
 
 
 def choose_optimal_k(features, k_max, criterion, sample_size=5000):
@@ -281,7 +282,8 @@ def parse_arguments():
     parser.add_argument('--seed', type=int, default=0, help='Random seed.')
     parser.add_argument('--region', type=float, nargs=4, default=[0, 1, 0, 1], help='Crop region fractions.')
     parser.add_argument('--downsample', type=int, default=1, help='Downsampling factor for overlay.')
-    
+    parser.add_argument('--patch-size', type=int, default=64, help='Tile size in pixels used during extraction.')
+
     return parser.parse_args()
 
 
@@ -296,7 +298,7 @@ def main():
 
         logging.info('Loading tile features...')
         features = load_features(args.features_npy, args.features_csv)
-        print(f"DEBUG: Loaded {features.shape[0]} tiles with {features.shape[1]} features each")
+        LOGGER.debug(f"Loaded {features.shape[0]} tiles with {features.shape[1]} features each")
 
         logging.info('Scaling features...')
         scaler = scale_features(features, args.batch_size)
@@ -318,7 +320,7 @@ def main():
             k = args.clusters
 
         # Generate color palette for clusters.
-        print(f"DEBUG: Generating color palette for {k} clusters")
+        LOGGER.debug(f"Generating color palette for {k} clusters")
         color_palette = generate_color_palette(
             n=k,
             alpha=180,  # Semi-transparent for overlay.
@@ -387,7 +389,7 @@ def main():
         save_tile_overlay(
             args.image, coords_df, labels, color_dict,
             region=tuple(args.region), out_path=args.outdir / 'overlay_clusters.tif',
-            patch_size=64, down=args.downsample
+            patch_size=args.patch_size, down=args.downsample
         )
 
         print("✓ Uniform tile clustering completed successfully.")

@@ -86,6 +86,7 @@ CLUST_BATCH_SIZE=10000     # Batch size for clustering stage.
 WORKERS=4                  # Python multiprocess workers.
 SEED=0                     # Random seed for reproducibility.
 DOWNSAMPLE=1               # Down‑sampling factor for final overlays (>1 ⇒ subsample).
+UNIFORM_PATCH_SIZE="${PATCH_SIZES[0]}"  # Tile size for uniform tiling (first patch size).
 
 # Visualisation ROI in normalised slide coordinates (xmin xmax ymin ymax).
 VIZ_BOX=(0.57 0.67 0.46 0.56)
@@ -232,7 +233,6 @@ if [[ "${RUN_VIT_EXTRACTION}" == "True" ]]; then
             --label_map        "${RAW_MASKS}" \
             --output           "${PATCH_DIR}" \
             --patch_sizes      "${PATCH_SIZE_ARGS[@]}" \
-            --workers          "${WORKERS}" \
             --batch_size       "${BATCH_SIZE}" \
             --model_name       "facebook/dino-vits16" \
             --viz_crop_region  "${VIZ_BOX[@]}" \
@@ -249,9 +249,6 @@ if [[ "${RUN_VIT_EXTRACTION}" == "True" ]]; then
             printf '  2. Provide existing binary image at: %s\n' "${BINARY_IMAGE}"
             exit 1
         fi
-
-        # Use the first patch size for uniform tiling (can be extended for multi-scale).
-        UNIFORM_PATCH_SIZE="${PATCH_SIZES[0]}"
 
         # Use smaller batch size for uniform tiling to handle large numbers of tiles.
         UNIFORM_BATCH_SIZE=$((BATCH_SIZE / 4))
@@ -389,7 +386,8 @@ if [[ "${RUN_CLUSTERING}" == "True" ]]; then
             --seed          "${SEED}" \
             --outdir        "${FILTERED_CLUSTER_DIR}" \
             --region        0 1 0 1 \
-            --downsample    "${DOWNSAMPLE}"
+            --downsample    "${DOWNSAMPLE}" \
+            --patch-size    "${UNIFORM_PATCH_SIZE}"
     fi
 else
     printf '\n⏭ Skipping clustering step (RUN_CLUSTERING=False)\n'

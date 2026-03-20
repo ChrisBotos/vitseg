@@ -31,9 +31,9 @@ import tifffile as tiff
 import psutil
 
 # Import the overlay functions to test.
-from overlay_masks import (
+from code.overlay_masks import (
     OverlayConfig,
-    create_memory_efficient_overlay,
+    overlay,
     calculate_optimal_batch_size,
     get_system_memory_info,
     get_mask_max_label_efficiently
@@ -190,7 +190,7 @@ def test_memory_constrained_overlay():
                     memory_before = process.memory_info().rss / (1024**2)
 
                     # Run overlay creation.
-                    create_memory_efficient_overlay(
+                    overlay(
                         image_path=image_path,
                         mask_path=mask_path,
                         output_path=output_path,

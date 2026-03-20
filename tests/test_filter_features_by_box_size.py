@@ -61,13 +61,16 @@ class TestFilterFeaturesByBoxSize:
         """Create synthetic multi-scale feature data for testing."""
         # Generate features for 3 scales (16px, 32px, 64px).
         total_features = 3 * self.features_per_scale
-        
+
         # Create random feature data.
         np.random.seed(42)  # For reproducible tests.
         feature_data = np.random.randn(self.num_samples, total_features)
-        
-        # Create DataFrame with numbered columns.
-        columns = [str(i) for i in range(total_features)]
+
+        # Create DataFrame with vit{size}_{i} column naming convention
+        # matching the real pipeline output from segmentation_mask_dynamic_patches_vit.py.
+        columns = []
+        for size in [16, 32, 64]:
+            columns.extend([f"vit{size}_{i}" for i in range(self.features_per_scale)])
         self.df_features = pd.DataFrame(feature_data, columns=columns)
         
         # Save to temporary CSV.

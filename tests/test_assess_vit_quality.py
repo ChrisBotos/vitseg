@@ -123,7 +123,7 @@ class TestViTQualityAssessor(unittest.TestCase):
         
         for key in expected_keys:
             self.assertIn(key, border_metrics)
-            self.assertIsInstance(border_metrics[key], (int, float))
+            self.assertIsInstance(border_metrics[key], (int, float, np.integer, np.floating))
         
         # Validate logical relationships.
         self.assertEqual(
@@ -188,7 +188,7 @@ class TestViTQualityAssessor(unittest.TestCase):
         
         for key in expected_keys:
             self.assertIn(key, quality_metrics)
-            self.assertIsInstance(quality_metrics[key], (int, float))
+            self.assertIsInstance(quality_metrics[key], (int, float, np.integer, np.floating))
             self.assertFalse(np.isnan(quality_metrics[key]))
         
         # Validate value ranges.

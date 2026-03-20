@@ -19,11 +19,14 @@ Usage:
     config = load_color_config("config.json")
     colors = config.generate_palette(n=10)
 """
+import logging
 import traceback
 import json
 from typing import Dict, List, Tuple, Union, Optional
 from pathlib import Path
 from dataclasses import dataclass, field
+
+LOGGER = logging.getLogger(__name__)
 
 from code.generate_contrast_colors import generate_color_palette
 
@@ -99,18 +102,18 @@ class ColorConfig:
                     color = '#' + color
                 
                 if len(color) != 7:
-                    print(f"WARNING: Invalid hex color '{color}', skipping")
+                    LOGGER.warning(f"Invalid hex color '{color}', skipping")
                     continue
-                    
+
                 try:
                     int(color[1:], 16)  # Validate hex format.
                     validated_colors.append(color.upper())
                 except ValueError:
-                    print(f"WARNING: Invalid hex color '{color}', skipping")
+                    LOGGER.warning(f"Invalid hex color '{color}', skipping")
                     continue
             
             self.custom_colors = validated_colors
-            print(f"DEBUG: Validated {len(self.custom_colors)} custom colors")
+            LOGGER.debug(f"Validated {len(self.custom_colors)} custom colors")
 
     def generate_palette(self, n: int) -> Dict[int, Tuple[int, int, int, int]]:
         """
@@ -125,11 +128,11 @@ class ColorConfig:
         This method applies all configuration settings to generate a color
         palette optimized for scientific visualization contexts.
         """
-        print(f"DEBUG: Generating palette with ColorConfig: n={n}, background={self.background}")
-        print(f"DEBUG: Config - alpha={self.alpha}, saturation={self.saturation}, contrast_ratio={self.contrast_ratio}")
+        LOGGER.debug(f"Generating palette with ColorConfig: n={n}, background={self.background}")
+        LOGGER.debug(f"Config - alpha={self.alpha}, saturation={self.saturation}, contrast_ratio={self.contrast_ratio}")
         
         if self.custom_colors:
-            print(f"DEBUG: Using {len(self.custom_colors)} custom colors: {self.custom_colors[:3]}...")
+            LOGGER.debug(f"Using {len(self.custom_colors)} custom colors: {self.custom_colors[:3]}...")
         
         return generate_color_palette(
             n=n,
@@ -190,17 +193,17 @@ def load_color_config(config_path: Union[str, Path] = None) -> ColorConfig:
     fallback to defaults when configuration files are not available.
     """
     if config_path is None:
-        print("DEBUG: No config path provided, using default ColorConfig")
+        LOGGER.debug("No config path provided, using default ColorConfig")
         return ColorConfig()
     
     config_path = Path(config_path)
     
     if not config_path.exists():
-        print(f"DEBUG: Config file {config_path} not found, using default ColorConfig")
+        LOGGER.debug(f"Config file {config_path} not found, using default ColorConfig")
         return ColorConfig()
     
     try:
-        print(f"DEBUG: Loading color configuration from {config_path}")
+        LOGGER.debug(f"Loading color configuration from {config_path}")
         
         with open(config_path, 'r') as f:
             config_data = json.load(f)
@@ -212,12 +215,12 @@ def load_color_config(config_path: Union[str, Path] = None) -> ColorConfig:
             config_data = config_data['color_config']
         
         config = ColorConfig.from_dict(config_data)
-        print(f"DEBUG: Successfully loaded color configuration")
+        LOGGER.debug("Successfully loaded color configuration")
         return config
         
     except Exception as e:
-        print(f"WARNING: Failed to load color config from {config_path}: {e}")
-        print("DEBUG: Using default ColorConfig")
+        LOGGER.warning(f"Failed to load color config from {config_path}: {e}")
+        LOGGER.debug("Using default ColorConfig")
         return ColorConfig()
 
 
@@ -239,7 +242,7 @@ def save_color_config(config: ColorConfig, config_path: Union[str, Path]) -> Non
         with open(config_path, 'w') as f:
             json.dump(config.to_dict(), f, indent=2)
         
-        print(f"DEBUG: Color configuration saved to {config_path}")
+        LOGGER.debug(f"Color configuration saved to {config_path}")
         
     except Exception as e:
         print(f"ERROR: Failed to save color config to {config_path}: {e}")

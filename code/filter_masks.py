@@ -542,7 +542,7 @@ def main() -> None:  # noqa: C901 – Linear CLI flow.
         paint_overlay(
             raw=raw,
             label_map=label_map,
-            passed_labels=set(np.where(passed_mask)[0] + 1),
+            passed_labels=set(passed_labels),
             out_path=cfg.out_dir / f"{cfg.prefix}overlay.tif",
             region=cfg.region,
             alpha=0.35,

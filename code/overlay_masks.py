@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import gc
+import logging
 import os
 import sys
 import traceback
@@ -45,6 +46,8 @@ import tifffile as tiff
 from tqdm import tqdm
 import multiprocessing as mp
 import psutil  # For system memory monitoring.
+
+LOGGER = logging.getLogger(__name__)
 
 """CONFIGURATION MANAGEMENT"""
 
@@ -87,7 +90,7 @@ class OverlayConfig:
         if self.batch_size < 1:
             self.batch_size = 1
         elif self.batch_size > 8:  # Limit batch size to prevent memory issues.
-            print(f"WARNING: Reducing batch size from {self.batch_size} to 8 for memory safety")
+            LOGGER.warning(f"Reducing batch size from {self.batch_size} to 8 for memory safety")
             self.batch_size = 8
 
         if self.alpha < 0.0 or self.alpha > 1.0:
@@ -99,7 +102,7 @@ class OverlayConfig:
         # Adjust cleanup frequency based on batch size for better memory management.
         if self.cleanup_frequency > 20:
             self.cleanup_frequency = 20
-            print("DEBUG: Limited cleanup frequency to 20 for better memory management")
+            LOGGER.debug("Limited cleanup frequency to 20 for better memory management")
 
 
 """MEMORY MONITORING UTILITIES"""
@@ -124,7 +127,7 @@ def get_system_memory_info() -> Dict[str, float]:
             'percent_used': memory.percent
         }
     except Exception as e:
-        print(f"DEBUG: Failed to get system memory info: {e}")
+        LOGGER.debug(f"Failed to get system memory info: {e}")
         return {
             'total_mb': 16384,  # Assume 16GB default.
             'available_mb': 8192,  # Assume 8GB available.
@@ -157,8 +160,8 @@ def calculate_optimal_batch_size(tile_size: int, available_memory_mb: int = 8192
     optimal_batch_size = min(max_batch_size, 8)  # Cap at 8.
     optimal_batch_size = max(optimal_batch_size, 1)  # Minimum 1.
 
-    print(f"DEBUG: Calculated optimal batch size: {optimal_batch_size} "
-          f"(memory per tile: {memory_per_tile_mb:.1f}MB, available: {available_memory_mb}MB)")
+    LOGGER.debug(f"Calculated optimal batch size: {optimal_batch_size} "
+                 f"(memory per tile: {memory_per_tile_mb:.1f}MB, available: {available_memory_mb}MB)")
 
     return optimal_batch_size
 
@@ -214,10 +217,10 @@ def cleanup_gpu_memory() -> None:
         mempool = cp.get_default_memory_pool()
         mempool.free_all_blocks()
 
-        print("DEBUG: GPU memory cleanup completed.")
+        LOGGER.debug("GPU memory cleanup completed.")
 
     except Exception as e:
-        print(f"DEBUG: GPU cleanup failed: {e}")
+        LOGGER.debug(f"GPU cleanup failed: {e}")
 
 
 def monitor_memory_usage(config: OverlayConfig, tile_count: int) -> bool:
@@ -247,10 +250,10 @@ def monitor_memory_usage(config: OverlayConfig, tile_count: int) -> bool:
             used_mb = gpu_info.get('device_used_mb', 0)
 
             if used_mb > config.memory_limit_mb:
-                print(f"WARNING: GPU memory usage ({used_mb:.1f}MB) exceeds limit ({config.memory_limit_mb}MB)")
+                LOGGER.warning(f"GPU memory usage ({used_mb:.1f}MB) exceeds limit ({config.memory_limit_mb}MB)")
                 return False
 
-            print(f"DEBUG: GPU memory usage: {used_mb:.1f}MB / {config.memory_limit_mb}MB")
+            LOGGER.debug(f"GPU memory usage: {used_mb:.1f}MB / {config.memory_limit_mb}MB")
 
     return True
 
@@ -272,20 +275,20 @@ def generate_label_colors(max_label: int, seed: int = 42) -> np.ndarray:
     segmentation masks, ensuring consistent colors across multiple runs
     while providing sufficient visual distinction between adjacent labels.
     """
-    print(f"DEBUG: Generating color palette for {max_label} labels with seed {seed}")
+    LOGGER.debug(f"Generating color palette for {max_label} labels with seed {seed}")
 
     # Limit color LUT size to prevent excessive memory usage.
     # Large labels will be mapped to valid indices using modulo operation.
     if max_label > 1000000:  # 1M labels max to prevent memory issues.
-        print(f"WARNING: Max label {max_label} is very large, limiting to 1M for memory efficiency")
-        print("DEBUG: Large label values will be mapped to valid LUT indices using modulo operation")
+        LOGGER.warning(f"Max label {max_label} is very large, limiting to 1M for memory efficiency")
+        LOGGER.debug("Large label values will be mapped to valid LUT indices using modulo operation")
         max_label = 1000000
 
     rng = np.random.default_rng(seed)
     lut = rng.integers(0, 256, size=(max_label + 1, 3), dtype=np.uint8)
     lut[0] = 0  # Background remains black for better contrast.
 
-    print(f"DEBUG: Color palette generated successfully")
+    LOGGER.debug(f"Color palette generated successfully")
     return lut
 
 
@@ -302,7 +305,7 @@ def get_mask_max_label_efficiently(mask_path: Union[str, Path]) -> int:
     This function uses chunked reading to determine the maximum label
     without loading the entire mask into memory, preventing OOM issues.
     """
-    print(f"DEBUG: Determining max label in mask: {mask_path}")
+    LOGGER.debug(f"Determining max label in mask: {mask_path}")
 
     try:
         # Load mask with memory mapping.
@@ -326,7 +329,7 @@ def get_mask_max_label_efficiently(mask_path: Union[str, Path]) -> int:
         del mask_memmap
         gc.collect()
 
-        print(f"DEBUG: Max label determined efficiently: {max_label}")
+        LOGGER.debug(f"Max label determined efficiently: {max_label}")
         return max_label
 
     except Exception as e:
@@ -387,12 +390,12 @@ def blend_tile_with_mask(
                 if free_memory_mb > memory_limit_mb * 0.5:  # Use 50% safety margin.
                     xp = cp
                     gpu_available = True
-                    print(f"DEBUG: Using GPU backend with {free_memory_mb:.1f}MB available")
+                    LOGGER.debug(f"Using GPU backend with {free_memory_mb:.1f}MB available")
                 else:
-                    print(f"DEBUG: GPU memory insufficient ({free_memory_mb:.1f}MB), using CPU")
+                    LOGGER.debug(f"GPU memory insufficient ({free_memory_mb:.1f}MB), using CPU")
 
         except Exception as e:
-            print(f"DEBUG: GPU initialization failed ({e}), falling back to CPU")
+            LOGGER.debug(f"GPU initialization failed ({e}), falling back to CPU")
 
     try:
         # Normalize image intensity to 0-255 range.
@@ -430,11 +433,11 @@ def blend_tile_with_mask(
         return result
 
     except Exception as e:
-        print(f"WARNING: Tile blending failed with {xp.__name__} backend: {e}")
+        LOGGER.warning(f"Tile blending failed with {xp.__name__} backend: {e}")
 
         # Fallback to CPU processing.
         if gpu_available:
-            print("DEBUG: Attempting CPU fallback")
+            LOGGER.debug("Attempting CPU fallback")
             return blend_tile_with_mask(tile_img, tile_mask, color_lut, alpha,
                                       enable_gpu=False, memory_limit_mb=memory_limit_mb)
         else:
@@ -456,7 +459,7 @@ def create_spatial_batches(tiles: List[Tuple], batch_size: int) -> List[List[Tup
     usage and cache efficiency during parallel processing. Tiles are grouped
     to minimize memory fragmentation and improve processing throughput.
     """
-    print(f"DEBUG: Creating spatial batches from {len(tiles)} tiles with batch size {batch_size}")
+    LOGGER.debug(f"Creating spatial batches from {len(tiles)} tiles with batch size {batch_size}")
 
     if batch_size <= 0:
         batch_size = 1
@@ -467,7 +470,7 @@ def create_spatial_batches(tiles: List[Tuple], batch_size: int) -> List[List[Tup
         batch = tiles[i:i + batch_size]
         batches.append(batch)
 
-    print(f"DEBUG: Created {len(batches)} spatial batches")
+    LOGGER.debug(f"Created {len(batches)} spatial batches")
     return batches
 
 
@@ -573,7 +576,7 @@ def process_batch_worker_optimized(batch_args: Tuple) -> List[Tuple[int, int, in
         tile_batch, img_path, mask_path, config_dict, color_lut = batch_args
         config = OverlayConfig(**config_dict)
 
-        print(f"DEBUG: Processing optimized batch of {len(tile_batch)} tiles")
+        LOGGER.debug(f"Processing optimized batch of {len(tile_batch)} tiles")
 
         results = []
 
@@ -605,7 +608,7 @@ def process_batch_worker_optimized(batch_args: Tuple) -> List[Tuple[int, int, in
         if config.enable_gpu:
             cleanup_gpu_memory()
 
-        print(f"DEBUG: Optimized batch processing completed with {len(results)} results")
+        LOGGER.debug(f"Optimized batch processing completed with {len(results)} results")
         return results
 
     except Exception as e:
@@ -649,15 +652,15 @@ def overlay(
 
     # Get system memory info and optimize batch size accordingly.
     memory_info = get_system_memory_info()
-    print(f"DEBUG: System memory - Total: {memory_info['total_mb']:.0f}MB, "
-          f"Available: {memory_info['available_mb']:.0f}MB, Used: {memory_info['percent_used']:.1f}%")
+    LOGGER.debug(f"System memory - Total: {memory_info['total_mb']:.0f}MB, "
+                 f"Available: {memory_info['available_mb']:.0f}MB, Used: {memory_info['percent_used']:.1f}%")
 
     # Use available system memory instead of config limit if it's more restrictive.
     effective_memory_limit = min(config.memory_limit_mb, memory_info['available_mb'] * 0.8)  # Use 80% of available.
 
     optimal_batch_size = calculate_optimal_batch_size(config.tile_size, effective_memory_limit)
     if config.batch_size > optimal_batch_size:
-        print(f"DEBUG: Reducing batch size from {config.batch_size} to {optimal_batch_size} for memory efficiency")
+        LOGGER.debug(f"Reducing batch size from {config.batch_size} to {optimal_batch_size} for memory efficiency")
         config.batch_size = optimal_batch_size
 
     config.validate()
@@ -667,11 +670,11 @@ def overlay(
     mask_path = Path(mask_path)
     output_path = Path(output_path)
 
-    print(f"DEBUG: Starting overlay creation")
-    print(f"DEBUG: Image: {image_path}")
-    print(f"DEBUG: Mask: {mask_path}")
-    print(f"DEBUG: Output: {output_path}")
-    print(f"DEBUG: Configuration: {config}")
+    LOGGER.debug(f"Starting overlay creation")
+    LOGGER.debug(f"Image: {image_path}")
+    LOGGER.debug(f"Mask: {mask_path}")
+    LOGGER.debug(f"Output: {output_path}")
+    LOGGER.debug(f"Configuration: {config}")
 
     try:
 
@@ -682,7 +685,7 @@ def overlay(
             image_shape = tif_file.series[0].shape
             height, width = image_shape[-2:]  # Extract H, W regardless of other dimensions.
 
-        print(f"DEBUG: Image dimensions: {height} x {width}")
+        LOGGER.debug(f"Image dimensions: {height} x {width}")
 
         # Validate mask dimensions using memory mapping.
         mask_memmap = np.load(mask_path, mmap_mode="r")
@@ -694,7 +697,7 @@ def overlay(
                 f"image=({height}, {width}), mask=({mask_height}, {mask_width})"
             )
 
-        print(f"DEBUG: Mask dimensions validated: {mask_height} x {mask_width}")
+        LOGGER.debug(f"Mask dimensions validated: {mask_height} x {mask_width}")
 
         '''Memory estimation and BigTIFF configuration'''
 
@@ -702,11 +705,11 @@ def overlay(
         estimated_output_size = height * width * 3
         use_bigtiff = estimated_output_size >= config.bigtiff_threshold
 
-        print(f"DEBUG: Estimated output size: {estimated_output_size / (1024**3):.2f} GB")
-        print(f"DEBUG: Using BigTIFF: {use_bigtiff}")
+        LOGGER.debug(f"Estimated output size: {estimated_output_size / (1024**3):.2f} GB")
+        LOGGER.debug(f"Using BigTIFF: {use_bigtiff}")
 
         # Create empty output file using memory mapping.
-        print("DEBUG: Creating output memory map")
+        LOGGER.debug("Creating output memory map")
 
         tiff.memmap(
             output_path,
@@ -719,7 +722,7 @@ def overlay(
         '''Tile generation and spatial batching'''
 
         # Generate tile specifications.
-        print(f"DEBUG: Generating tiles with size {config.tile_size}")
+        LOGGER.debug(f"Generating tiles with size {config.tile_size}")
 
         tiles = []
 
@@ -730,12 +733,12 @@ def overlay(
                 x1 = min(x0 + config.tile_size, width)
                 tiles.append((y0, y1, x0, x1))
 
-        print(f"DEBUG: Generated {len(tiles)} tiles")
+        LOGGER.debug(f"Generated {len(tiles)} tiles")
 
         # Create spatial batches for memory-efficient processing.
         tile_batches = create_spatial_batches(tiles, config.batch_size)
 
-        print(f"DEBUG: Created {len(tile_batches)} spatial batches")
+        LOGGER.debug(f"Created {len(tile_batches)} spatial batches")
 
         '''Worker process configuration with memory-based optimization'''
 
@@ -752,7 +755,7 @@ def overlay(
                 max_workers_by_memory = max(1, int((8 * 1024) / memory_per_worker_mb))
 
                 n_workers = min(cpu_count, max_workers_by_memory, 4)  # Cap at 4 for stability.
-                print(f"DEBUG: Auto-calculated {n_workers} workers (CPU: {cpu_count}, Memory limit: {max_workers_by_memory})")
+                LOGGER.debug(f"Auto-calculated {n_workers} workers (CPU: {cpu_count}, Memory limit: {max_workers_by_memory})")
             else:
                 n_workers = int(config.workers)
         else:
@@ -762,15 +765,15 @@ def overlay(
         if n_workers < 1:
             n_workers = 1
         elif n_workers > 8:  # Hard limit to prevent memory issues.
-            print(f"WARNING: Limiting workers from {n_workers} to 8 for memory safety")
+            LOGGER.warning(f"Limiting workers from {n_workers} to 8 for memory safety")
             n_workers = 8
 
-        print(f"DEBUG: Using {n_workers} worker processes")
+        LOGGER.debug(f"Using {n_workers} worker processes")
 
         '''Optimized parallel tile processing with pre-computed color LUT'''
 
         # Pre-compute max label and color LUT to avoid memory issues in workers.
-        print("DEBUG: Pre-computing color lookup table")
+        LOGGER.debug("Pre-computing color lookup table")
         max_label = get_mask_max_label_efficiently(mask_path)
 
         if max_label > 0:
@@ -798,7 +801,7 @@ def overlay(
             for batch in tile_batches
         ]
 
-        print("DEBUG: Starting optimized parallel tile processing")
+        LOGGER.debug("Starting optimized parallel tile processing")
 
         # Process batches in parallel with optimized memory monitoring and error recovery.
         multiprocessing_context = mp.get_context("spawn")
@@ -806,7 +809,7 @@ def overlay(
         # Reduce max workers further if memory constraints are severe.
         if config.memory_limit_mb < 4096:  # Less than 4GB.
             n_workers = min(n_workers, 2)
-            print(f"DEBUG: Reduced workers to {n_workers} due to low memory limit")
+            LOGGER.debug(f"Reduced workers to {n_workers} due to low memory limit")
 
         with ProcessPoolExecutor(max_workers=n_workers, mp_context=multiprocessing_context) as executor:
             # Open output memory map for writing results.
@@ -832,7 +835,7 @@ def overlay(
 
                             # More aggressive memory monitoring and cleanup.
                             if not monitor_memory_usage(config, processed_count):
-                                print("WARNING: Memory limit exceeded, forcing aggressive cleanup")
+                                LOGGER.warning("Memory limit exceeded, forcing aggressive cleanup")
                                 cleanup_gpu_memory()
                                 gc.collect()
 
@@ -840,11 +843,11 @@ def overlay(
                             if processed_count % max(1, config.cleanup_frequency * config.batch_size // 2) == 0:
                                 output_memmap.flush()
                                 gc.collect()  # Force garbage collection after flush.
-                                print(f"DEBUG: Flushed output and cleaned memory after {processed_count} tiles")
+                                LOGGER.debug(f"Flushed output and cleaned memory after {processed_count} tiles")
 
                     except Exception as parallel_error:
                         print(f"ERROR: Parallel processing failed: {parallel_error}")
-                        print("DEBUG: Attempting sequential fallback processing")
+                        LOGGER.debug("Attempting sequential fallback processing")
 
                         # Sequential fallback processing.
                         for batch_args_single in batch_args[processed_count // config.batch_size:]:
@@ -867,7 +870,7 @@ def overlay(
                                 # Continue with next batch.
                                 continue
 
-                print(f"DEBUG: Processed {processed_count} tiles successfully")
+                LOGGER.debug(f"Processed {processed_count} tiles successfully")
 
             finally:
                 # Ensure output is properly flushed and closed.
@@ -875,14 +878,14 @@ def overlay(
                     output_memmap.flush()
                     del output_memmap
                     gc.collect()  # Force garbage collection to release file handles.
-                    print("DEBUG: Output memory map closed")
+                    LOGGER.debug("Output memory map closed")
                 except Exception as cleanup_error:
-                    print(f"WARNING: Output memory map cleanup failed: {cleanup_error}")
+                    LOGGER.warning(f"Output memory map cleanup failed: {cleanup_error}")
 
         '''Final optimization and compression (optional on Windows)'''
 
         try:
-            print("DEBUG: Starting final TIFF optimization")
+            LOGGER.debug("Starting final TIFF optimization")
 
             # Create temporary path for repacking.
             temp_output_path = output_path.with_suffix(".temp.tif")
@@ -895,13 +898,13 @@ def overlay(
                 try:
                     import imagecodecs  # noqa: F401
                     compression_method = config.compression
-                    print(f"DEBUG: Using {compression_method} compression")
+                    LOGGER.debug(f"Using {compression_method} compression")
                 except ImportError:
                     compression_method = "none"
-                    print("DEBUG: imagecodecs not available, using no compression")
+                    LOGGER.debug("imagecodecs not available, using no compression")
 
                 # Write optimized TIFF with tiling and compression.
-                print("DEBUG: Writing optimized TIFF file")
+                LOGGER.debug("Writing optimized TIFF file")
 
                 tiff.imwrite(
                     temp_output_path,
@@ -930,11 +933,11 @@ def overlay(
                     except (PermissionError, OSError) as e:
                         if attempt == 4:  # Last attempt.
                             raise e
-                        print(f"DEBUG: File replacement attempt {attempt + 1} failed, retrying...")
+                        LOGGER.debug(f"File replacement attempt {attempt + 1} failed, retrying...")
                         time.sleep(0.5)
                         gc.collect()
 
-                print(f"DEBUG: Final optimization completed")
+                LOGGER.debug(f"Final optimization completed")
 
             finally:
                 # Cleanup memory map properly.
@@ -942,11 +945,11 @@ def overlay(
                     del sparse_memmap
                     gc.collect()  # Force garbage collection to release file handles.
                 except Exception as cleanup_error:
-                    print(f"WARNING: Memory map cleanup failed: {cleanup_error}")
+                    LOGGER.warning(f"Memory map cleanup failed: {cleanup_error}")
 
         except Exception as optimization_error:
-            print(f"WARNING: Final optimization failed: {optimization_error}")
-            print("DEBUG: Continuing with unoptimized output file")
+            LOGGER.warning(f"Final optimization failed: {optimization_error}")
+            LOGGER.debug("Continuing with unoptimized output file")
 
             # Clean up temporary file if it exists.
             temp_output_path = output_path.with_suffix(".temp.tif")
@@ -978,9 +981,9 @@ def overlay(
         if output_path.exists():
             try:
                 output_path.unlink()
-                print("DEBUG: Cleaned up partial output file")
+                LOGGER.debug("Cleaned up partial output file")
             except Exception as cleanup_error:
-                print(f"WARNING: Failed to cleanup partial output: {cleanup_error}")
+                LOGGER.warning(f"Failed to cleanup partial output: {cleanup_error}")
 
         raise RuntimeError(f"Overlay creation failed: {e}")
 
@@ -1123,8 +1126,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         parser = create_argument_parser()
         args = parser.parse_args(argv)
 
-        print("DEBUG: Starting overlay_masks.py")
-        print(f"DEBUG: Command line arguments: {args}")
+        LOGGER.debug("Starting overlay_masks.py")
+        LOGGER.debug(f"Command line arguments: {args}")
 
         # Create configuration from arguments.
         config = OverlayConfig(

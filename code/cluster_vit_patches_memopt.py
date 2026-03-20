@@ -23,7 +23,6 @@ Usage:
 import argparse
 import logging
 import sys
-import traceback
 from pathlib import Path
 from typing import Dict, Tuple
 import numpy as np
@@ -40,6 +39,8 @@ import matplotlib.pyplot as plt
 import random
 
 from generate_contrast_colors import generate_color_palette, colors_to_hex_list
+
+LOGGER = logging.getLogger(__name__)
 
 """Compute slicing indices from fractional region specification."""
 def _slice_region(height: int, width: int, region: tuple[float, float, float, float]) -> tuple[int, int, int, int]:
@@ -104,8 +105,8 @@ def save_overlay(img_path: Path, seg_map_path: Path, passed_labels: np.ndarray, 
         out_path: Output path for overlay image.
         down: Downsampling factor for memory efficiency.
     """
-    print(f"DEBUG: Creating overlay with {len(color_palette)} colors")
-    print(f"DEBUG: Region: {region}, downsample: {down}")
+    LOGGER.debug(f"Creating overlay with {len(color_palette)} colors")
+    LOGGER.debug(f"Region: {region}, downsample: {down}")
 
     # Load and crop base image.
     base_full = Image.open(img_path).convert('RGBA')
@@ -144,7 +145,7 @@ def save_overlay(img_path: Path, seg_map_path: Path, passed_labels: np.ndarray, 
     composite.save(out_path)
 
     logging.info(f'Overlay saved with {np.sum(cluster_map > 0)} colored pixels → {out_path}')
-    print(f"DEBUG: Overlay dimensions: {composite.size}, unique clusters: {len(np.unique(cluster_map[cluster_map > 0]))}")
+    LOGGER.debug(f"Overlay dimensions: {composite.size}, unique clusters: {len(np.unique(cluster_map[cluster_map > 0]))}")
 
 ''' Choose optimal K via silhouette or Davies-Bouldin '''
 def choose_optimal_k(features, k_max, criterion, sample_size=5000):
@@ -253,16 +254,16 @@ def main():
         k = args.clusters
 
     # Generate high-contrast colors optimized for scientific visualization.
-    print(f"DEBUG: Generating enhanced color palette for {k} clusters")
+    LOGGER.debug(f"Generating enhanced color palette for {k} clusters")
 
     # Try to load color configuration if available.
     try:
         from color_config import load_color_config
         color_config = load_color_config()
-        print("DEBUG: Using ColorConfig system for enhanced color generation")
+        LOGGER.debug("Using ColorConfig system for enhanced color generation")
         color_palette = color_config.generate_palette(n=k)
     except ImportError:
-        print("DEBUG: ColorConfig not available, using direct color generation")
+        LOGGER.debug("ColorConfig not available, using direct color generation")
         color_palette = generate_color_palette(
             n=k,
             alpha=255,   # (0 to 255) 0=transparent, 255=opaque.
@@ -275,13 +276,8 @@ def main():
     # Convert to hex format for matplotlib/seaborn compatibility.
     hex_colors = colors_to_hex_list(color_palette)
 
-    print(f"DEBUG: Generated {len(color_palette)} RGBA colors and {len(hex_colors)} hex colors")
-
-    # Display first few colors for verification.
-    for i in range(min(3, len(color_palette))):
-        r, g, b, a = color_palette[i]
-        hex_color = hex_colors[i] if i < len(hex_colors) else "N/A"
-        print(f"DEBUG: Color {i}: RGB({r}, {g}, {b}) -> {hex_color}")
+    # Convert list to dict for save_overlay compatibility.
+    color_palette = {i: color_palette[i] for i in range(len(color_palette))}
 
 
     logging.info(f'Clustering into {k} clusters...')
@@ -342,18 +338,18 @@ def main():
     plt.close()
 
     logging.info(f'PCA plot saved with {len(hex_colors)} distinct colors.')
-    print(f"DEBUG: PCA plot uses {len(np.unique(labels[sample_idx]))} unique cluster labels")
+    LOGGER.debug(f"PCA plot uses {len(np.unique(labels[sample_idx]))} unique cluster labels")
 
     logging.info('Creating overlay…')
     passed = np.load(args.labels)
 
-    print(f"DEBUG: Creating overlay for {len(passed)} passed labels with {len(color_palette)} cluster colors")
+    LOGGER.debug(f"Creating overlay for {len(passed)} passed labels with {len(color_palette)} cluster colors")
 
     save_overlay(args.image, args.label_map, passed, labels, color_palette,
                 region=args.region, out_path=args.outdir / 'overlay_clusters.tif',
                 down=args.downsample)
 
-    print("DEBUG: Overlay creation completed successfully")
+    LOGGER.debug("Overlay creation completed successfully")
 
 if __name__ == '__main__':
     main()

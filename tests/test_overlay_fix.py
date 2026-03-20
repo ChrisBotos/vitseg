@@ -62,27 +62,13 @@ def test_large_label_fix():
         print(f"DEBUG: Original approach failed as expected: {e}")
 
     # Test the fixed approach with modulo operation.
-    print("\nDEBUG: Testing fixed approach with modulo operation...")
-    try:
-        max_lut_index = lut.shape[0] - 1
-        safe_mask_indices = test_mask % (max_lut_index + 1)
-        colored_mask_fixed = lut[safe_mask_indices]
-        
-        print(f"DEBUG: Safe indices: {safe_mask_indices.flatten()}")
-        print(f"DEBUG: Colored mask shape: {colored_mask_fixed.shape}")
-        print("DEBUG: Fixed approach succeeded!")
-        
-        # Verify all indices are within bounds.
-        assert np.all(safe_mask_indices >= 0), "Some indices are negative"
-        assert np.all(safe_mask_indices <= max_lut_index), "Some indices exceed LUT bounds"
-        print("DEBUG: All assertions passed - indices are within bounds")
-        
-        return True
-        
-    except Exception as e:
-        print(f"ERROR: Fixed approach failed: {e}")
-        traceback.print_exc()
-        return False
+    max_lut_index = lut.shape[0] - 1
+    safe_mask_indices = test_mask % (max_lut_index + 1)
+    colored_mask_fixed = lut[safe_mask_indices]
+
+    # Verify all indices are within bounds.
+    assert np.all(safe_mask_indices >= 0), "Some indices are negative"
+    assert np.all(safe_mask_indices <= max_lut_index), "Some indices exceed LUT bounds"
 
 
 def test_color_consistency():
@@ -119,9 +105,6 @@ def test_color_consistency():
     # Verify consistency.
     for i, (c1, c2) in enumerate(zip(colors1, colors2)):
         assert np.array_equal(c1, c2), f"Color inconsistency for label {large_labels[i]}"
-
-    print("DEBUG: Color consistency test passed!")
-    return True
 
 
 def main():

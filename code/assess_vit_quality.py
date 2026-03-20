@@ -414,7 +414,21 @@ class ViTQualityAssessor:
         info = {'primary_size': 32, 'sizes': [32], 'is_combination': False}
 
         # Extract size information from name patterns.
-        if '_16px' in config_name:
+        # Check combination patterns first (most specific to least specific)
+        # to avoid substring false matches (e.g. '_32px' matching '_16_32px').
+        if '_16_32_64px' in config_name:
+            info['primary_size'] = 37  # Average.
+            info['sizes'] = [16, 32, 64]
+            info['is_combination'] = True
+        elif '_16_32px' in config_name:
+            info['primary_size'] = 24  # Average.
+            info['sizes'] = [16, 32]
+            info['is_combination'] = True
+        elif '_32_64px' in config_name:
+            info['primary_size'] = 48  # Average.
+            info['sizes'] = [32, 64]
+            info['is_combination'] = True
+        elif '_16px' in config_name:
             info['primary_size'] = 16
             info['sizes'] = [16]
         elif '_32px' in config_name:
@@ -423,18 +437,6 @@ class ViTQualityAssessor:
         elif '_64px' in config_name:
             info['primary_size'] = 64
             info['sizes'] = [64]
-        elif '_16_32px' in config_name:
-            info['primary_size'] = 24  # Average
-            info['sizes'] = [16, 32]
-            info['is_combination'] = True
-        elif '_32_64px' in config_name:
-            info['primary_size'] = 48  # Average
-            info['sizes'] = [32, 64]
-            info['is_combination'] = True
-        elif '_16_32_64px' in config_name:
-            info['primary_size'] = 37  # Average
-            info['sizes'] = [16, 32, 64]
-            info['is_combination'] = True
 
         return info
 

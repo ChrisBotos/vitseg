@@ -48,6 +48,7 @@ Usage:
 """
 
 import argparse
+import logging
 import traceback
 from pathlib import Path
 from typing import Optional
@@ -61,13 +62,15 @@ from torchvision import transforms
 from transformers import ViTImageProcessor, ViTModel
 from tqdm import tqdm
 
+LOGGER = logging.getLogger(__name__)
+
 # Optional import for binary enhancement.
 try:
     import cv2
     CV2_AVAILABLE = True
 except ImportError:
     CV2_AVAILABLE = False
-    print("WARNING: opencv-python not available. Binary enhancement will be disabled.")
+    LOGGER.warning("opencv-python not available. Binary enhancement will be disabled.")
 
 # Disable PIL image size limit for large microscopy images.
 Image.MAX_IMAGE_PIXELS = None
@@ -98,9 +101,9 @@ class UniformTileDataset(Dataset):
         self.width, self.height = self.image.size
         self.coords = self._compute_tile_centers()
         
-        print(f"DEBUG: Image dimensions: {self.width}x{self.height}")
-        print(f"DEBUG: Patch size: {patch_size}, stride: {stride}")
-        print(f"DEBUG: Generated {len(self.coords)} tiles (includes edge tiles with black padding)")
+        LOGGER.debug(f"Image dimensions: {self.width}x{self.height}")
+        LOGGER.debug(f"Patch size: {patch_size}, stride: {stride}")
+        LOGGER.debug(f"Generated {len(self.coords)} tiles (includes edge tiles with black padding)")
 
         # Calculate how many tiles will need padding.
         edge_tiles = 0
@@ -113,7 +116,7 @@ class UniformTileDataset(Dataset):
             if (left < 0 or top < 0 or right > self.width or bottom > self.height):
                 edge_tiles += 1
 
-        print(f"DEBUG: {edge_tiles} tiles will require black padding for edge coverage")
+        LOGGER.debug(f"{edge_tiles} tiles will require black padding for edge coverage")
 
     def _compute_tile_centers(self):
         """
@@ -131,7 +134,7 @@ class UniformTileDataset(Dataset):
         tiles_x = (self.width + self.stride - 1) // self.stride  # Ceiling division.
         tiles_y = (self.height + self.stride - 1) // self.stride  # Ceiling division.
 
-        print(f"DEBUG: Image coverage requires {tiles_x} x {tiles_y} = {tiles_x * tiles_y} tiles")
+        LOGGER.debug(f"Image coverage requires {tiles_x} x {tiles_y} = {tiles_x * tiles_y} tiles")
 
         for tile_y in range(tiles_y):
             for tile_x in range(tiles_x):
@@ -250,31 +253,31 @@ def extract_uniform_features(
         output_dir: Directory to save output files.
         workers: Number of CPU workers for data loading.
     """
-    print(f"DEBUG: Loading image from {image_path}")
-    
+    LOGGER.debug(f"Loading image from {image_path}")
+
     # Load binary mask image.
     image = Image.open(image_path)
-    print(f"DEBUG: Image loaded successfully, size: {image.size}")
+    LOGGER.debug(f"Image loaded successfully, size: {image.size}")
 
     # Check for very large images and suggest downsampling.
     width, height = image.size
     total_pixels = width * height
 
     if total_pixels > 100_000_000:  # 100 megapixels.
-        print(f"WARNING: Very large image detected ({width}x{height} = {total_pixels:,} pixels)")
-        print(f"WARNING: This will generate {((width-patch_size)//stride+1) * ((height-patch_size)//stride+1):,} tiles")
-        print(f"WARNING: Consider downsampling the image or using larger patch sizes for better performance")
+        LOGGER.warning(f"Very large image detected ({width}x{height} = {total_pixels:,} pixels)")
+        LOGGER.warning(f"This will generate {((width-patch_size)//stride+1) * ((height-patch_size)//stride+1):,} tiles")
+        LOGGER.warning(f"Consider downsampling the image or using larger patch sizes for better performance")
 
         # Optionally downsample very large images.
         if total_pixels > 200_000_000:  # 200 megapixels.
             downsample_factor = 2
             new_width = width // downsample_factor
             new_height = height // downsample_factor
-            print(f"WARNING: Auto-downsampling by factor {downsample_factor} to {new_width}x{new_height}")
+            LOGGER.warning(f"Auto-downsampling by factor {downsample_factor} to {new_width}x{new_height}")
             image = image.resize((new_width, new_height), Image.LANCZOS)
             patch_size = patch_size // downsample_factor
             stride = stride // downsample_factor
-            print(f"DEBUG: Adjusted patch_size to {patch_size}, stride to {stride}")
+            LOGGER.debug(f"Adjusted patch_size to {patch_size}, stride to {stride}")
 
     # Create preprocessing transform matching ViT requirements.
     transform = transforms.Compose([
@@ -290,11 +293,11 @@ def extract_uniform_features(
     # Adjust batch size for very large datasets to prevent memory issues.
     if len(dataset) > 500000:
         adjusted_batch_size = min(batch_size, 512)
-        print(f"DEBUG: Large dataset detected ({len(dataset)} tiles), reducing batch size to {adjusted_batch_size}")
+        LOGGER.debug(f"Large dataset detected ({len(dataset)} tiles), reducing batch size to {adjusted_batch_size}")
         batch_size = adjusted_batch_size
     elif len(dataset) > 200000:
         adjusted_batch_size = min(batch_size, 1024)
-        print(f"DEBUG: Medium dataset detected ({len(dataset)} tiles), reducing batch size to {adjusted_batch_size}")
+        LOGGER.debug(f"Medium dataset detected ({len(dataset)} tiles), reducing batch size to {adjusted_batch_size}")
         batch_size = adjusted_batch_size
     
     # Create data loader for batch processing with memory-efficient settings.
@@ -302,7 +305,7 @@ def extract_uniform_features(
     effective_workers = min(workers, 2) if len(dataset) > 100000 else workers
     use_pin_memory = device.type == 'cuda' and len(dataset) < 50000
 
-    print(f"DEBUG: Using {effective_workers} workers, pin_memory={use_pin_memory}")
+    LOGGER.debug(f"Using {effective_workers} workers, pin_memory={use_pin_memory}")
 
     loader = DataLoader(
         dataset,
@@ -321,12 +324,12 @@ def extract_uniform_features(
     # Create temporary files for incremental saving if dataset is very large.
     save_incrementally = len(dataset) > 100000
     if save_incrementally:
-        print(f"DEBUG: Large dataset detected, will save features incrementally")
+        LOGGER.debug(f"Large dataset detected, will save features incrementally")
         temp_features_file = output_dir / f"temp_features_{image_path.stem}.npy"
         temp_coords_file = output_dir / f"temp_coords_{image_path.stem}.csv"
 
-        # Estimate feature dimension (DINO ViT-S/16 = 384).
-        feature_dim = 384
+        # Determine feature dimension from model configuration.
+        feature_dim = model.config.hidden_size
 
         # Create memory-mapped array for incremental saving.
         temp_features_mmap = np.memmap(
@@ -343,16 +346,16 @@ def extract_uniform_features(
     model.to(device)
     model.eval()
 
-    print(f"DEBUG: Processing {len(dataset)} tiles in {len(loader)} batches")
+    LOGGER.debug(f"Processing {len(dataset)} tiles in {len(loader)} batches")
 
     # Estimate memory usage.
-    feature_dim = 384  # DINO ViT-S/16 feature dimension.
+    feature_dim = model.config.hidden_size
     estimated_memory_gb = (len(dataset) * feature_dim * 4) / (1024**3)  # 4 bytes per float32.
-    print(f"DEBUG: Estimated memory usage for features: {estimated_memory_gb:.2f} GB")
+    LOGGER.debug(f"Estimated memory usage for features: {estimated_memory_gb:.2f} GB")
 
     if estimated_memory_gb > 8:
-        print(f"WARNING: High memory usage expected ({estimated_memory_gb:.2f} GB)")
-        print(f"WARNING: Consider using smaller patch sizes or downsampling the image")
+        LOGGER.warning(f"High memory usage expected ({estimated_memory_gb:.2f} GB)")
+        LOGGER.warning(f"Consider using smaller patch sizes or downsampling the image")
 
     # Process tiles in batches with memory management.
     current_sample_idx = 0
@@ -388,11 +391,11 @@ def extract_uniform_features(
                 # Progress reporting for large datasets.
                 if (batch_idx + 1) % max(1, len(loader) // 20) == 0:
                     progress_pct = (batch_idx + 1) / len(loader) * 100
-                    print(f"DEBUG: Processed {batch_idx + 1}/{len(loader)} batches ({progress_pct:.1f}%)")
+                    LOGGER.debug(f"Processed {batch_idx + 1}/{len(loader)} batches ({progress_pct:.1f}%)")
 
             except RuntimeError as e:
                 if "out of memory" in str(e).lower():
-                    print(f"WARNING: GPU memory error at batch {batch_idx + 1}, clearing cache and retrying...")
+                    LOGGER.warning(f"GPU memory error at batch {batch_idx + 1}, clearing cache and retrying...")
                     torch.cuda.empty_cache() if device.type == 'cuda' else None
 
                     # Retry with individual tile processing.
@@ -419,7 +422,7 @@ def extract_uniform_features(
 
     # Handle final feature processing based on storage method.
     if save_incrementally:
-        print(f"DEBUG: Using incremental save method")
+        LOGGER.debug(f"Using incremental save method")
         # Features are already saved in memory-mapped file.
         all_features = np.array(temp_features_mmap)
         coords_list = temp_coords_list
@@ -427,12 +430,12 @@ def extract_uniform_features(
         # Flush memory-mapped array.
         del temp_features_mmap
 
-        print(f"DEBUG: Final feature array shape: {all_features.shape}")
+        LOGGER.debug(f"Final feature array shape: {all_features.shape}")
     else:
-        print(f"DEBUG: Using in-memory method")
+        LOGGER.debug(f"Using in-memory method")
         # Concatenate all features from memory.
         all_features = torch.cat(features_list, dim=0).numpy()
-        print(f"DEBUG: Final feature array shape: {all_features.shape}")
+        LOGGER.debug(f"Final feature array shape: {all_features.shape}")
 
     # Create DataFrames for features and coordinates.
     df_features = pd.DataFrame(all_features)
@@ -452,9 +455,9 @@ def extract_uniform_features(
     np.save(features_npy, all_features)
     df_coords.to_csv(coords_csv, index=False)
 
-    print(f"DEBUG: Features saved to {features_csv}")
-    print(f"DEBUG: Features saved to {features_npy}")
-    print(f"DEBUG: Coordinates saved to {coords_csv}")
+    LOGGER.debug(f"Features saved to {features_csv}")
+    LOGGER.debug(f"Features saved to {features_npy}")
+    LOGGER.debug(f"Coordinates saved to {coords_csv}")
     
     print(f"✓ Uniform tiling feature extraction completed successfully.")
     print(f"  • Processed {len(dataset)} tiles")
@@ -473,7 +476,7 @@ def enhance_binary_image(image_array):
         Enhanced binary mask array.
     """
     if not CV2_AVAILABLE:
-        print("WARNING: opencv-python not available. Returning original image.")
+        LOGGER.warning("opencv-python not available. Returning original image.")
         return image_array
 
     # Apply morphological operations to enhance structure.
@@ -523,15 +526,15 @@ def extract_multiscale_uniform_features(
         enhance_binary: Apply morphological enhancement to binary masks.
         fusion_method: Method to combine multi-scale features.
     """
-    print(f"DEBUG: Loading image from {image_path}")
+    LOGGER.debug(f"Loading image from {image_path}")
 
     # Load binary mask image.
     image = Image.open(image_path)
-    print(f"DEBUG: Image loaded successfully, size: {image.size}")
+    LOGGER.debug(f"Image loaded successfully, size: {image.size}")
 
     # Apply binary enhancement if requested.
     if enhance_binary:
-        print(f"DEBUG: Applying binary enhancement...")
+        LOGGER.debug(f"Applying binary enhancement...")
         image_array = np.array(image.convert('L'))
         enhanced_array = enhance_binary_image(image_array)
         image = Image.fromarray(enhanced_array).convert('RGB')
@@ -541,8 +544,8 @@ def extract_multiscale_uniform_features(
     # Use the largest patch size for grid generation to ensure complete coverage.
     base_patch_size = max(patch_sizes)
 
-    print(f"DEBUG: Multi-scale extraction with patch sizes: {patch_sizes}")
-    print(f"DEBUG: Base patch size for grid: {base_patch_size}, stride: {stride}")
+    LOGGER.debug(f"Multi-scale extraction with patch sizes: {patch_sizes}")
+    LOGGER.debug(f"Base patch size for grid: {base_patch_size}, stride: {stride}")
 
     # Storage for multi-scale features.
     all_scale_features = {}
@@ -550,7 +553,7 @@ def extract_multiscale_uniform_features(
 
     # Process each patch size.
     for patch_size in patch_sizes:
-        print(f"DEBUG: Processing patch size {patch_size}...")
+        LOGGER.debug(f"Processing patch size {patch_size}...")
 
         # Create dataset for this patch size.
         dataset = UniformTileDataset(image, patch_size, stride, transform=None)
@@ -566,9 +569,15 @@ def extract_multiscale_uniform_features(
         # Apply transform to dataset.
         dataset.transform = transform
 
-        # Store coordinates from first patch size only.
+        # Store grid-based coordinates (using stride as the grid cell size) only
+        # once. The grid positions are the same for all scales; only the crop
+        # extent around each centre changes.
         if not coords_list:
-            coords_list = dataset.coords.copy()
+            coords_list = [
+                (tile_x * stride + stride // 2, tile_y * stride + stride // 2)
+                for tile_y in range((dataset.height + stride - 1) // stride)
+                for tile_x in range((dataset.width + stride - 1) // stride)
+            ]
 
         # Adjust batch size for this scale.
         scale_batch_size = min(batch_size, max(32, batch_size // len(patch_sizes)))
@@ -587,7 +596,7 @@ def extract_multiscale_uniform_features(
         model.to(device)
         model.eval()
 
-        print(f"DEBUG: Processing {len(dataset)} tiles for patch size {patch_size}")
+        LOGGER.debug(f"Processing {len(dataset)} tiles for patch size {patch_size}")
 
         # Initialize storage for this scale.
         features_list = []
@@ -612,9 +621,16 @@ def extract_multiscale_uniform_features(
 
                 except RuntimeError as e:
                     if "out of memory" in str(e).lower():
-                        print(f"WARNING: GPU memory error at batch {batch_idx + 1}, clearing cache...")
-                        torch.cuda.empty_cache() if device.type == 'cuda' else None
-                        continue
+                        LOGGER.warning(f"GPU memory error at batch {batch_idx + 1}, retrying per-tile...")
+                        if device.type == 'cuda':
+                            torch.cuda.empty_cache()
+
+                        # Retry failed batch one tile at a time to avoid data loss.
+                        for i in range(len(tiles)):
+                            single_tile = tiles[i:i+1]
+                            single_output = model(pixel_values=single_tile)
+                            single_feature = single_output.last_hidden_state[:, 0, :].cpu().numpy()
+                            features_list.append(single_feature)
                     else:
                         raise e
 
@@ -622,10 +638,17 @@ def extract_multiscale_uniform_features(
         scale_features = np.vstack(features_list)
         all_scale_features[patch_size] = scale_features
 
-        print(f"DEBUG: Scale {patch_size}: extracted {scale_features.shape[0]} features of dimension {scale_features.shape[1]}")
+        # Verify tile count matches grid coordinate count.
+        if scale_features.shape[0] != len(coords_list):
+            raise RuntimeError(
+                f"Tile count mismatch at scale {patch_size}px: "
+                f"got {scale_features.shape[0]} features but {len(coords_list)} grid positions"
+            )
+
+        LOGGER.debug(f"Scale {patch_size}: extracted {scale_features.shape[0]} features of dimension {scale_features.shape[1]}")
 
     # Combine multi-scale features.
-    print(f"DEBUG: Combining multi-scale features using {fusion_method}")
+    LOGGER.debug(f"Combining multi-scale features using {fusion_method}")
 
     if fusion_method == "concatenate":
         # Concatenate features from all scales.
@@ -639,7 +662,7 @@ def extract_multiscale_uniform_features(
     else:
         raise ValueError(f"Unknown fusion method: {fusion_method}")
 
-    print(f"DEBUG: Combined features shape: {combined_features.shape}")
+    LOGGER.debug(f"Combined features shape: {combined_features.shape}")
 
     # Ensure output directory exists.
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -656,15 +679,22 @@ def extract_multiscale_uniform_features(
         df_scale.to_csv(scale_features_csv, index=False)
         np.save(scale_features_npy, all_scale_features[patch_size])
 
-        print(f"DEBUG: Scale {patch_size}px features saved to {scale_features_npy}")
+        LOGGER.debug(f"Scale {patch_size}px features saved to {scale_features_npy}")
 
     # Save combined multi-scale features.
     features_csv = output_dir / f"features_{image_stem}.csv"
     features_npy = output_dir / f"features_{image_stem}.npy"
     coords_csv = output_dir / f"coords_{image_stem}.csv"
 
+    # Generate feature column names matching the vit{size}_{i} convention
+    # used by filter_features_by_box_size.py and the dynamic patches script.
+    feature_columns: list[str] = []
+    for size in sorted(patch_sizes):
+        dim = all_scale_features[size].shape[1]
+        feature_columns.extend([f"vit{size}_{i}" for i in range(dim)])
+
     # Save combined features in both CSV and NPY formats.
-    df_features = pd.DataFrame(combined_features)
+    df_features = pd.DataFrame(combined_features, columns=feature_columns)
     df_features.to_csv(features_csv, index=False)
     np.save(features_npy, combined_features)
 
@@ -672,9 +702,9 @@ def extract_multiscale_uniform_features(
     df_coords = pd.DataFrame(coords_list, columns=["x_center", "y_center"])
     df_coords.to_csv(coords_csv, index=False)
 
-    print(f"DEBUG: Combined features saved to {features_csv}")
-    print(f"DEBUG: Combined features saved to {features_npy}")
-    print(f"DEBUG: Coordinates saved to {coords_csv}")
+    LOGGER.debug(f"Combined features saved to {features_csv}")
+    LOGGER.debug(f"Combined features saved to {features_npy}")
+    LOGGER.debug(f"Coordinates saved to {coords_csv}")
 
     print(f"✓ Multi-scale uniform tiling feature extraction completed successfully.")
     print(f"  • Processed {len(coords_list)} tiles at {len(patch_sizes)} scales")
@@ -740,21 +770,21 @@ def main():
         if args.stride is None:
             args.stride = max(args.patch_sizes)
 
-        print(f"DEBUG: Starting uniform tiling ViT feature extraction")
-        print(f"DEBUG: Input image: {args.image}")
-        print(f"DEBUG: Output directory: {args.output}")
-        print(f"DEBUG: Patch sizes: {args.patch_sizes}, stride: {args.stride}")
-        print(f"DEBUG: Multi-scale fusion: {args.fusion_method}")
-        print(f"DEBUG: Binary enhancement: {args.enhance_binary}")
-        print(f"DEBUG: Batch size: {args.batch_size}")
-        print(f"DEBUG: Model: {args.model_name}")
+        LOGGER.debug(f"Starting uniform tiling ViT feature extraction")
+        LOGGER.debug(f"Input image: {args.image}")
+        LOGGER.debug(f"Output directory: {args.output}")
+        LOGGER.debug(f"Patch sizes: {args.patch_sizes}, stride: {args.stride}")
+        LOGGER.debug(f"Multi-scale fusion: {args.fusion_method}")
+        LOGGER.debug(f"Binary enhancement: {args.enhance_binary}")
+        LOGGER.debug(f"Batch size: {args.batch_size}")
+        LOGGER.debug(f"Model: {args.model_name}")
 
         # Detect available device.
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"DEBUG: Using device: {device}")
+        LOGGER.debug(f"Using device: {device}")
 
         # Load ViT model and processor.
-        print(f"DEBUG: Loading ViT model and processor...")
+        LOGGER.debug(f"Loading ViT model and processor...")
         processor = ViTImageProcessor.from_pretrained(args.model_name)
         model = ViTModel.from_pretrained(
             args.model_name,
@@ -762,7 +792,7 @@ def main():
             use_safetensors=True
         )
 
-        print(f"DEBUG: Model loaded successfully")
+        LOGGER.debug(f"Model loaded successfully")
 
         # Extract features using multi-scale uniform tiling.
         extract_multiscale_uniform_features(

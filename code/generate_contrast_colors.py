@@ -16,9 +16,12 @@ Usage:
     from generate_contrast_colors import generate_color_palette
     colors = generate_color_palette(n=10, background="dark")
 """
+import logging
 import traceback
 from typing import Dict, Tuple, List
 import colorsys
+
+LOGGER = logging.getLogger(__name__)
 
 
 def calculate_luminance(rgb: Tuple[int, int, int]) -> float:
@@ -136,7 +139,7 @@ def generate_color_palette(n: int, alpha: int = 255, background: str = "dark",
         • Custom colors take precedence when provided.
         • Optimized for scientific imaging contexts requiring rapid visual differentiation.
     """
-    print(f"DEBUG: Generating {n} colors with background='{background}', contrast_ratio={contrast_ratio}")
+    LOGGER.debug(f"Generating {n} colors with background='{background}', contrast_ratio={contrast_ratio}")
 
     if n <= 0:
         return {}
@@ -153,7 +156,7 @@ def generate_color_palette(n: int, alpha: int = 255, background: str = "dark",
 
     # Use custom colors if provided.
     if custom_colors:
-        print(f"DEBUG: Using {len(custom_colors)} custom colors")
+        LOGGER.debug(f"Using {len(custom_colors)} custom colors")
 
         color_index = 0
         for custom_color in custom_colors:
@@ -166,7 +169,7 @@ def generate_color_palette(n: int, alpha: int = 255, background: str = "dark",
                 hex_color = '#' + hex_color
 
             if len(hex_color) != 7:
-                print(f"WARNING: Invalid hex color '{custom_color}', skipping")
+                LOGGER.warning(f"Invalid hex color '{custom_color}', skipping")
                 continue
 
             try:
@@ -174,15 +177,15 @@ def generate_color_palette(n: int, alpha: int = 255, background: str = "dark",
                 g = int(hex_color[3:5], 16)
                 b = int(hex_color[5:7], 16)
                 colors[color_index] = (r, g, b, alpha)
-                print(f"DEBUG: Custom color {color_index}: RGB({r}, {g}, {b}) from {hex_color}")
+                LOGGER.debug(f"Custom color {color_index}: RGB({r}, {g}, {b}) from {hex_color}")
                 color_index += 1
             except ValueError:
-                print(f"WARNING: Invalid hex color '{custom_color}', skipping")
+                LOGGER.warning(f"Invalid hex color '{custom_color}', skipping")
                 continue
 
         # Fill remaining colors with predefined or algorithmic if needed.
         if len(colors) < n:
-            print(f"DEBUG: Need {n - len(colors)} additional colors beyond custom palette")
+            LOGGER.debug(f"Need {n - len(colors)} additional colors beyond custom palette")
             remaining_colors = _generate_remaining_colors(
                 n - len(colors), len(colors), alpha, background, saturation,
                 contrast_ratio, hue_start
@@ -195,7 +198,7 @@ def generate_color_palette(n: int, alpha: int = 255, background: str = "dark",
     predefined_colors = get_predefined_vibrant_colors()
 
     if n <= len(predefined_colors):
-        print(f"DEBUG: Using predefined vibrant colors (first {n} of {len(predefined_colors)})")
+        LOGGER.debug(f"Using predefined vibrant colors (first {n} of {len(predefined_colors)})")
 
         for i in range(n):
             r, g, b = predefined_colors[i]
@@ -209,12 +212,12 @@ def generate_color_palette(n: int, alpha: int = 255, background: str = "dark",
 
             colors[i] = (r, g, b, alpha)
             contrast = calculate_contrast_ratio((r, g, b), (0, 0, 0) if background == "dark" else (255, 255, 255))
-            print(f"DEBUG: Predefined color {i}: RGB({r}, {g}, {b}) contrast={contrast:.2f}")
+            LOGGER.debug(f"Predefined color {i}: RGB({r}, {g}, {b}) contrast={contrast:.2f}")
 
         return colors
 
     # For large numbers of colors, use hybrid approach.
-    print(f"DEBUG: Using hybrid approach: {len(predefined_colors)} predefined + {n - len(predefined_colors)} algorithmic")
+    LOGGER.debug(f"Using hybrid approach: {len(predefined_colors)} predefined + {n - len(predefined_colors)} algorithmic")
 
     # First, use all predefined colors.
     for i in range(len(predefined_colors)):
@@ -227,7 +230,7 @@ def generate_color_palette(n: int, alpha: int = 255, background: str = "dark",
 
         colors[i] = (r, g, b, alpha)
         contrast = calculate_contrast_ratio((r, g, b), (0, 0, 0) if background == "dark" else (255, 255, 255))
-        print(f"DEBUG: Predefined color {i}: RGB({r}, {g}, {b}) contrast={contrast:.2f}")
+        LOGGER.debug(f"Predefined color {i}: RGB({r}, {g}, {b}) contrast={contrast:.2f}")
 
     # Generate remaining colors algorithmically.
     remaining_colors = _generate_remaining_colors(
@@ -251,7 +254,7 @@ def _generate_remaining_colors(n_remaining: int, start_index: int, alpha: int,
     if n_remaining <= 0:
         return {}
 
-    print(f"DEBUG: Generating {n_remaining} additional colors algorithmically")
+    LOGGER.debug(f"Generating {n_remaining} additional colors algorithmically")
 
     # Golden ratio for optimal hue distribution.
     golden_ratio = 0.6180339887498948
@@ -304,7 +307,7 @@ def _generate_remaining_colors(n_remaining: int, start_index: int, alpha: int,
                     break
 
         colors[color_index] = (r, g, b, alpha)
-        print(f"DEBUG: Algorithmic color {color_index}: RGB({r}, {g}, {b}) contrast={current_contrast:.2f}")
+        LOGGER.debug(f"Algorithmic color {color_index}: RGB({r}, {g}, {b}) contrast={current_contrast:.2f}")
 
     return colors
 
@@ -329,7 +332,7 @@ def colors_to_hex_list(color_dict: Dict[int, Tuple[int, int, int, int]]) -> List
         else:
             hex_colors.append("#000000")  # Fallback black.
 
-    print(f"DEBUG: Generated {len(hex_colors)} hex colors: {hex_colors[:5]}...")
+    LOGGER.debug(f"Generated {len(hex_colors)} hex colors: {hex_colors[:5]}...")
     return hex_colors
 
 def test_color_generation():
