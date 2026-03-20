@@ -37,7 +37,7 @@ from PIL import Image
 
 # Import the module under test.
 try:
-    from vitseg.utilities.assess_vit_quality import ViTQualityAssessor
+    from vigseg.utilities.assess_vit_quality import ViTQualityAssessor
 except ImportError as e:
     print(f"Warning: Could not import assess_vit_quality module: {e}")
     print("Some tests may be skipped.")

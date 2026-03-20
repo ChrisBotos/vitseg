@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vitseg"
+name = "vigseg"
 version = "1.0.0"
-description = "ViT-on-Segmentation-Masks: Vision Transformer analysis pipeline for kidney tissue samples."
+description = "vigseg: Vision Transformer analysis pipeline for kidney tissue samples."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -48,14 +48,14 @@ dev = ["pytest>=8.0.0"]
 gpu = ["cupy-cuda12x>=13.5"]
 
 [project.scripts]
-vitseg = "vitseg.cli:main"
+vigseg = "vigseg.cli:main"
 
 [project.urls]
-Repository = "https://github.com/ChrisBotos/ViT-on-Segmentation-Masks"
+Repository = "https://github.com/ChrisBotos/vigseg"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["vitseg*"]
+include = ["vigseg*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

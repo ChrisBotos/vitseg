@@ -36,6 +36,7 @@ RUN_BINARY_CONVERSION=False  # Step 3.2: Convert mask set to binary TIFF.
 RUN_VIT_EXTRACTION=False     # Step 3.3: Extract ViT patch embeddings.
 RUN_FEATURE_FILTERING=True  # Step 3.4: Filter features by box sizes.
 RUN_CLUSTERING=True          # Step 3.5: Cluster the embeddings.
+RUN_COMPARISON=False         # Step 3.6: Compare ViT clusters vs spatial transcriptomics.
 
 # ViT extraction method selection.
 # Set to True for dynamic patches around masks (current behavior).
@@ -43,13 +44,13 @@ RUN_CLUSTERING=True          # Step 3.5: Cluster the embeddings.
 #
 # Dynamic patches (True):
 #   • Extracts patches centered on filtered nuclei masks.
-#   • Uses vitseg.extraction.dynamic_patches_vit.
+#   • Uses vigseg.extraction.dynamic_patches_vit.
 #   • Requires filtered masks and segmentation maps.
 #   • Ideal for individual cell morphology analysis.
 #
 # Uniform tiling (False):
 #   • Splits entire binary image into regular grid tiles.
-#   • Uses vitseg.extraction.uniform_tiling_vit.
+#   • Uses vigseg.extraction.uniform_tiling_vit.
 #   • Works directly with binary mask images.
 #   • Ideal for tissue architecture and spatial pattern analysis.
 #
@@ -100,6 +101,11 @@ MIN_AR=0.50 ; MAX_AR=3.20
 MIN_HOLE=0.00 ; MAX_HOLE=0.001
 
 NO_STACK=True              # Disable stacking of overlays to save RAM.
+
+# Comparison parameters.
+SPATIAL_DATA="data/metadata_complete.csv"   # Spatial transcriptomics metadata.
+COMPARISON_OUTPUT="results/improved_comparison"  # Comparison output directory.
+MATCH_RADIUS=40                             # Matching radius in coordinate units.
 
 ###############################################################################
 # 2 ┃ Derived paths.                                    .
@@ -160,6 +166,12 @@ else
     printf '  ⏭ Step 3.5: Cluster the embeddings (SKIPPED)\n'
 fi
 
+if [[ "${RUN_COMPARISON}" == "True" ]]; then
+    printf '  ✓ Step 3.6: Compare ViT clusters vs spatial transcriptomics\n'
+else
+    printf '  ⏭ Step 3.6: Compare ViT clusters vs spatial transcriptomics (SKIPPED)\n'
+fi
+
 printf '\nConfiguration:\n'
 printf '  • Patch sizes: %s\n' "${PATCH_SIZES[*]}"
 if [[ "${RUN_FEATURE_FILTERING}" == "True" ]]; then
@@ -173,7 +185,7 @@ printf '\n========================================\n'
 ########################################
 if [[ "${RUN_FILTER_MASKS}" == "True" ]]; then
     printf '\n➤ Filtering segmentation masks …\n'
-    python -m vitseg.preprocessing.filter_masks \
+    python -m vigseg.preprocessing.filter_masks \
         --input             "${RAW_MASKS}" \
         --results-dir       "${FILTER_DIR}" \
         --output-prefix     "filtered_" \
@@ -197,7 +209,7 @@ fi
 ########################################
 if [[ "${RUN_BINARY_CONVERSION}" == "True" ]]; then
     printf '\n➤ Building binary mask image …\n'
-    python -m vitseg.preprocessing.binary_conversion \
+    python -m vigseg.preprocessing.binary_conversion \
            --mask   "${RAW_MASKS}" \
            --output "${BINARY_IMAGE}"
 else
@@ -227,7 +239,7 @@ if [[ "${RUN_VIT_EXTRACTION}" == "True" ]]; then
         PATCH_SIZE_ARGS=()
         for S in "${PATCH_SIZES[@]}"; do PATCH_SIZE_ARGS+=("$S"); done
 
-        python -m vitseg.extraction.dynamic_patches_vit \
+        python -m vigseg.extraction.dynamic_patches_vit \
             --image            "${BINARY_IMAGE}" \
             --mask             "${REQUIRED_MASKS}" \
             --label_map        "${RAW_MASKS}" \
@@ -236,6 +248,7 @@ if [[ "${RUN_VIT_EXTRACTION}" == "True" ]]; then
             --batch_size       "${BATCH_SIZE}" \
             --model_name       "facebook/dino-vits16" \
             --viz_crop_region  "${VIZ_BOX[@]}" \
+            --save_numpy \
             --no_compile
     else
         printf '\n➤ Extracting Vision‑Transformer patch embeddings (uniform tiling) …\n'
@@ -256,7 +269,7 @@ if [[ "${RUN_VIT_EXTRACTION}" == "True" ]]; then
             UNIFORM_BATCH_SIZE=256
         fi
 
-        python -m vitseg.extraction.uniform_tiling_vit \
+        python -m vigseg.extraction.uniform_tiling_vit \
             --image            "${BINARY_IMAGE}" \
             --output           "${PATCH_DIR}" \
             --patch_sizes      "${PATCH_SIZES[@]}" \
@@ -310,7 +323,7 @@ if [[ "${RUN_FEATURE_FILTERING}" == "True" ]]; then
     printf '  • Selected scales: %s\n' "${FILTER_BOX_SIZES[*]}"
     printf '  • Output directory: %s\n' "${FILTERED_DIR}"
 
-    python -m vitseg.clustering.filter_features \
+    python -m vigseg.clustering.filter_features \
         --input         "${FEATS_CSV}" \
         --output        "${FILTERED_DIR}" \
         --box_sizes     "${FILTER_BOX_SIZES[@]}" \
@@ -359,7 +372,7 @@ if [[ "${RUN_CLUSTERING}" == "True" ]]; then
 
     if [[ "${USE_DYNAMIC_PATCHES}" == "True" ]]; then
         # Dynamic patches clustering (uses filtered labels and segmentation masks).
-        python -m vitseg.clustering.cluster_dynamic_patches \
+        python -m vigseg.clustering.cluster_dynamic_patches \
             --image         "${IMAGE}" \
             --labels        "${FILTER_DIR}/filtered_passed_labels.npy" \
             --label_map     "${RAW_MASKS}" \
@@ -375,7 +388,7 @@ if [[ "${RUN_CLUSTERING}" == "True" ]]; then
             --downsample    "${DOWNSAMPLE}"
     else
         # Uniform tiling clustering (uses tile coordinates directly).
-        python -m vitseg.clustering.cluster_uniform_tiles \
+        python -m vigseg.clustering.cluster_uniform_tiles \
             --image         "${BINARY_IMAGE}" \
             --coords        "${FILTERED_COORDS_CSV}" \
             --features_npy  "${FILTERED_FEATS_NPY}" \
@@ -391,6 +404,23 @@ if [[ "${RUN_CLUSTERING}" == "True" ]]; then
     fi
 else
     printf '\n⏭ Skipping clustering step (RUN_CLUSTERING=False)\n'
+fi
+
+########################################
+# 3.6 ┃ Compare ViT clusters vs spatial transcriptomics.                      .
+########################################
+if [[ "${RUN_COMPARISON}" == "True" ]]; then
+    printf '\n➤ Running improved ViT-spatial comparison …\n'
+
+    python -m vigseg.comparison.improved_comparison \
+        --features      "${FILTERED_FEATS_CSV}" \
+        --coords        "${FILTERED_COORDS_CSV}" \
+        --spatial       "${SPATIAL_DATA}" \
+        --output        "${COMPARISON_OUTPUT}" \
+        --seed          "${SEED}" \
+        --radius        "${MATCH_RADIUS}"
+else
+    printf '\n⏭ Skipping comparison step (RUN_COMPARISON=False)\n'
 fi
 
 printf '\n✓ Pipeline completed successfully.\n'
