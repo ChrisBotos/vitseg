@@ -88,11 +88,11 @@ vitseg/
 ```
 
 The pipeline is controlled by step flags at the top of `pipeline.sh`. Set each to `True` or `False`:
-- `RUN_FILTER_MASKS` — Step 3.1: Filter segmentation masks.
-- `RUN_BINARY_CONVERSION` — Step 3.2: Convert mask set to binary TIFF.
-- `RUN_VIT_EXTRACTION` — Step 3.3: Extract ViT patch embeddings.
-- `RUN_FEATURE_FILTERING` — Step 3.4: Filter features by box sizes.
-- `RUN_CLUSTERING` — Step 3.5: Cluster the embeddings.
+- `RUN_FILTER_MASKS` - Step 3.1: Filter segmentation masks.
+- `RUN_BINARY_CONVERSION` - Step 3.2: Convert mask set to binary TIFF.
+- `RUN_VIT_EXTRACTION` - Step 3.3: Extract ViT patch embeddings.
+- `RUN_FEATURE_FILTERING` - Step 3.4: Filter features by box sizes.
+- `RUN_CLUSTERING` - Step 3.5: Cluster the embeddings.
 
 ### **Python CLI**
 ```bash
@@ -136,7 +136,7 @@ Many source files and data files are large. Claude must **never** load large dat
 
 ## **5. Instructions for Claude**
 
-### **5.1 General Behavior — Clean-Up and Organization Focus**
+### **5.1 General Behavior - Clean-Up and Organization Focus**
 
 The primary goal of this project phase is **clean-up, organization, and systematic mistake catching**. Claude must:
 
@@ -146,6 +146,7 @@ The primary goal of this project phase is **clean-up, organization, and systemat
 - **Do not** add new features unless explicitly asked. The focus is on fixing what exists.
 - When finding a bug, fix the **root cause**, not the symptom. Never add try/except wrappers, guard clauses, or default returns to suppress errors without understanding why they occur (see Section 5.7).
 - Flag suspicious code with a `# TODO(cleanup):` comment if the fix is non-trivial and requires user input.
+- Never use em dashes. Use hyphens (-) instead in all text.
 
 ### **5.2 Coding Style**
 
@@ -306,9 +307,10 @@ Usage:
 
 ## **7. Git Policy**
 
-- Never git add, commit, stash, tag, or pull.
-- Only update and deal with the local version of this repository.
-- Never leave comments related to version changes like: `# Version: 1.1 — removed X`.
+- Only use git (add, commit, stash, tag, push, pull) when the user explicitly asks.
+- Never include a `Co-Authored-By` line or any other indication that the commit was AI-assisted.
+- Commit messages must be full descriptive sentences ending with a period.
+- Never leave comments related to version changes.
 
 ---
 
@@ -321,7 +323,7 @@ Usage:
 - **Analysis samples:** IRI1, IRI2, IRI3, sham1, sham2, sham3.
 
 ### **ViT Model**
-- **Model:** DINO ViTs (facebook/dino-vits16) — self-supervised Vision Transformer.
+- **Model:** DINO ViTs (facebook/dino-vits16) - self-supervised Vision Transformer.
 - **Multi-scale patches:** 16px, 32px, 64px capturing cellular to tissue-level patterns.
 - **Two extraction modes:**
   - **Dynamic patches:** Centered on individual nuclei from segmentation masks.
@@ -370,3 +372,72 @@ Usage:
 - **Y-axis flipping:** Some visualizations flip the Y axis, others do not. The `--flip-y` flag controls this. Inconsistent use produces mirrored/inverted results.
 - **Memory exhaustion:** Large TIFF images (10,000+ x 10,000+ pixels) can exhaust RAM if loaded fully. The clustering modules already use memory-efficient streaming patterns.
 - **Cluster count mismatch:** The `K_INIT` parameter in `pipeline.sh` must match expectations in downstream analysis scripts that assume a specific number of clusters.
+
+---
+
+## **10. Large File and Token Management**
+
+### **CRITICAL: Context Window Hygiene**
+- **NEVER** read entire large data files (TIFF, NPY, NPZ, CSV, PNG, H5AD) into context.
+- **NEVER** dump raw result files or logs. Summarize findings instead.
+- **NEVER** cat/print files larger than ~200 lines without using offset/limit.
+- Use subagents for broad codebase exploration (10+ files).
+- Prefer targeted file reads (specific line ranges) over full-file reads.
+
+### **Working with Large Mathematical Scripts**
+- When a script contains extensive math (derivations, equations, matrix operations): read it in sections using offset/limit rather than loading the entire file.
+- Focus on the specific function or section being modified, not the whole file.
+
+### **Working with Large Result Files**
+- Read only the first/last few lines to verify format and content.
+- Use grep/search to find specific values rather than reading entire files.
+- Summarize results in markdown tables rather than reading raw output.
+
+### **Recommended: Create a .claudeignore**
+- Add a `.claudeignore` file at the project root to prevent accidental reads of large files.
+- Include: `data/`, `results/`, `masks/`, `comparison_analysis/`, `*.csv`, `*.tsv`, `*.h5`, `*.hdf5`, `*.h5ad`, `*.parquet`, `*.pkl`, `*.npy`, `*.npz`, `*.gz`, `*.tif`, `*.tiff`, `*.log`, `*.png`, `*.jpg`.
+
+---
+
+---
+
+## Results Repository Scheme
+
+All experiment outputs live in self-contained, date-prefixed run directories under `results/`.
+
+### Directory layout
+
+```
+results/
+└── <YYYY-MM-DD>_<run_name>/
+    ├── config.json                  # Run-level parameter/config snapshot
+    ├── <phase_a>/
+    │   ├── data/                    # Numerical outputs (CSV, TSV, JSON)
+    │   ├── figures/                 # Plots and visualizations (PNG, PDF)
+    │   └── logs/                    # Phase-specific log files
+    └── <phase_b>/
+        ├── data/
+        ├── figures/
+        └── logs/
+```
+
+### Rules
+
+1. Every script that produces outputs accepts `--name <run_name>` (default: `"default_run"`).
+2. **Date prefix**: auto-prepended (`YYYY-MM-DD`) when the run directory is first created.
+3. **Run reuse**: if `results/*_<run_name>/` already exists, new phases are added into it (no new directory).
+4. **Phase replacement**: if `<phase>/` already exists within the run, it is deleted and recreated.
+5. **Config snapshot**: a `config.json` is saved/updated in the run root with parameters, timestamp, and script invocation.
+6. **Logs live inside results**: no separate top-level `logs/` directory. Each phase keeps its logs co-located. SLURM logs go to `<phase>/logs/slurm/`.
+
+---
+
+## Handling Outside Reviewer Feedback
+
+Whenever you receive a message marked "Outside Reviewer Feedback":
+
+1. Do not revise immediately. First, respond to every critique individually.
+2. For each point, state one of: AGREE / DISAGREE / PARTIAL - followed by one sentence of reasoning.
+3. Only after addressing all points, produce the revised plan or code.
+4. If you disagree with a critique, explain why clearly. Do not silently ignore or capitulate without reason.
+5. If a critique reveals something you missed, say so explicitly - do not retroactively act like it was always planned.
