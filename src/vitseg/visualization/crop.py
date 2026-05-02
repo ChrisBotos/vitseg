@@ -22,6 +22,8 @@ import logging
 import numpy as np
 import tifffile
 
+from vitseg.utilities.logging_setup import setup_logging
+
 
 def crop_image(image: np.ndarray, crop_cell_centered_patch, logger=None) -> np.ndarray:
     """Crop image to a user-defined bounding box.
@@ -65,10 +67,7 @@ def crop_image(image: np.ndarray, crop_cell_centered_patch, logger=None) -> np.n
 def main():
     """Crop the IRI_regist.tif image using predefined relative coordinates."""
     # Set up logging.
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s"
-    )
+    _, __ = setup_logging("crop")
     logger = logging.getLogger(__name__)
 
     # Locate files relative to the repo root (script is at src/vitseg/visualization/crop.py).

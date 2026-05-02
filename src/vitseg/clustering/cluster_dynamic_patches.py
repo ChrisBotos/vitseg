@@ -39,6 +39,7 @@ import matplotlib.pyplot as plt
 import random
 
 from vitseg.utilities.color_generation import generate_color_palette, colors_to_hex_list
+from vitseg.utilities.logging_setup import setup_logging
 
 LOGGER = logging.getLogger(__name__)
 
@@ -69,12 +70,6 @@ def _build_lut(max_label: int, labels: np.ndarray, cluster_ids: np.ndarray) -> n
             lut[int(lab)] = int(cid) + 1  # Map cluster 0->1, cluster 1->2, etc.
 
     return lut
-
-''' Configure root logger '''
-def configure_logging():
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s | %(levelname)s | %(message)s",
-                        datefmt="%Y-%m-%d %H:%M:%S")
 
 ''' Set global random seeds for reproducibility '''
 def set_global_seed(seed: int):
@@ -229,7 +224,7 @@ def main():
         unittest.main(argv=[sys.argv[0]])
         return
 
-    configure_logging()
+    setup_logging("cluster_dynamic_patches", log_dir=args.outdir)
     set_global_seed(args.seed)
     args.outdir.mkdir(parents=True, exist_ok=True)
 

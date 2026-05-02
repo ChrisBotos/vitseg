@@ -59,6 +59,7 @@ from sklearn.metrics import davies_bouldin_score, silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 # Import color generation utilities.
+from vitseg.utilities.logging_setup import setup_logging
 try:
     from vitseg.utilities.color_generation import generate_color_palette, colors_to_hex_list
 except ImportError:
@@ -115,15 +116,6 @@ def _slice_region(height: int, width: int, region: Tuple[float, float, float, fl
     y0 = int(ymin * height)
     y1 = int(ymax * height)
     return x0, x1, y0, y1
-
-
-def configure_logging():
-    """Configure root logger for informative output."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
 
 
 def set_global_seed(seed: int):
@@ -292,7 +284,7 @@ def main():
     try:
         args = parse_arguments()
         
-        configure_logging()
+        setup_logging("cluster_uniform_tiles", log_dir=args.outdir)
         set_global_seed(args.seed)
         args.outdir.mkdir(parents=True, exist_ok=True)
 

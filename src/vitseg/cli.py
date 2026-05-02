@@ -26,6 +26,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from vitseg.utilities.logging_setup import setup_logging
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -146,10 +148,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    setup_logging("vitseg", log_dir=args.results_dir)
 
     if args.use_uniform_tiling:
         args.use_dynamic_patches = False

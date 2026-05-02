@@ -28,6 +28,8 @@ Usage:
 import argparse
 import logging
 import time
+
+from vitseg.utilities.logging_setup import setup_logging
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -625,10 +627,7 @@ def main():
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    setup_logging("improved_comparison", log_dir=args.output)
 
     t0 = time.time()
     LOGGER.info("=" * 60)

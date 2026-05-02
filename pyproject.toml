@@ -41,6 +41,7 @@ dependencies = [
     "imagecodecs>=2025.3",
     "pywavelets>=1.8",
     "contourpy>=1.1",
+    "rich>=13.0",
 ]
 
 [project.optional-dependencies]
